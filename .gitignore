@@ -1,2 +1,12 @@
 *.class
 *.log
+/.idea/.gitignore
+/build.sbt
+/conf/devrunsettings.conf
+/.bsp/
+/.idea/
+/project/project/
+/project/target/
+/target/
+/conf/finalibre-saxo.jks
+/conf/temp-token.txt
