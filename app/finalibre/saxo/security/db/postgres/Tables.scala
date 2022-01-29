@@ -11,15 +11,15 @@ object Tables {
 
   val schema = sessions.schema ++ processes.schema
 
-  class UserSessionTable(tag : Tag) extends Table[UserSession](tag, "USERSESSION"){
-    def sessionId = column[String]("SESSIONID", O.PrimaryKey, O.AutoInc)
+  class UserSessionTable(tag : Tag) extends Table[UserSession](tag, "SECURITY_USERSESSION"){
+    def sessionId = column[String]("SESSIONID", O.PrimaryKey)
     def ip = column[String]("IPADDRESS")
     def started = column[Timestamp]("STARTED")
 
     def * = (sessionId, ip, started) <> (UserSession.tupled, UserSession.unapply)
   }
 
-  class AuthenticationProcessTable(tag : Tag) extends Table[AuthenticationProcess](tag, "AUTHPROCESS") {
+  class AuthenticationProcessTable(tag : Tag) extends Table[AuthenticationProcess](tag, "SECURITY_AUTHPROCESS") {
     def sessionId = column[String]("SESSIONID")
     def nonce = column[String]("SIGNINNONCE")
     def state = column[String]("SIGNINSTATE")
@@ -30,7 +30,7 @@ object Tables {
     def validUntil = column[Option[Timestamp]]("VALIDUNTIL")
     def * = (sessionId, nonce, state, forwardUrl, saxoAccessToken, saxoRefreshToken, validUntil) <> (AuthenticationProcess.tupled, AuthenticationProcess.unapply)
 
-    def pk = primaryKey("PK_AUTHPROCESS", (sessionId, nonce))
+    def pk = primaryKey("PK_SECURITY_AUTHPROCESS", (sessionId, nonce))
     def fkSessionId = foreignKey("FK_AUTHPROCESS_SESSID", sessionId, sessions)(_.sessionId, onDelete = ForeignKeyAction.Cascade)
 
   }

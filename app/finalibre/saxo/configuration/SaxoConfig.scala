@@ -21,5 +21,16 @@ object SaxoConfig {
     case class ConnectionDetails(url : String, user : String, password : String, noOfParallel : Int )
   }
 
+  object Rest {
+    object Outgoing {
+      private lazy val outConf = conf.getConfig("finalibre.saxo.rest.outgoing")
+      lazy val authenticationUrl = outConf.getString("authentication-url")
+      lazy val clientId = outConf.getString("client-id")
+      lazy val clientSecret = outConf.getString("client-secret")
+      lazy val tokenUrl = outConf.getString("token-url")
+    }
+
+  }
+
 
 }

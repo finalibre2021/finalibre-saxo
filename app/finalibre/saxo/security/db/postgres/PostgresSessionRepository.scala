@@ -4,6 +4,7 @@ import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
 import finalibre.saxo.configuration.SaxoConfig
 import finalibre.saxo.security.SessionRepository
 import finalibre.saxo.security.model.{AuthenticationProcess, UserSession}
+import org.slf4j.LoggerFactory
 import slick.jdbc.PostgresProfile.api._
 
 import scala.concurrent.duration._
@@ -11,19 +12,22 @@ import java.sql.Timestamp
 import java.util.UUID
 import javax.inject.Inject
 import scala.concurrent.{Await, ExecutionContext}
+import scala.util.{Failure, Success, Try}
 
 class PostgresSessionRepository @Inject() (context : ExecutionContext) extends SessionRepository {
+  private val logger = LoggerFactory.getLogger(this.getClass)
   private val dbConf = SaxoConfig.Persistance.applicationDb
   private val dataSource = new HikariDataSource(
     new HikariConfig {
-      setJdbcUrl(dbConf.user)
+      setJdbcUrl(dbConf.url)
       setUsername(dbConf.user)
       setPassword(dbConf.password)
       setMaximumPoolSize(dbConf.noOfParallel)
     }
   )
   private val db = Database.forDataSource(dataSource, Some(dbConf.noOfParallel))
-  private implicit val shortDuration = 5.seconds
+  private val shortDuration = 5.seconds
+  private val longDuration = 1.minute
   private def now = new Timestamp(System.currentTimeMillis())
   private implicit val executionContext = context
 
@@ -105,7 +109,17 @@ class PostgresSessionRepository @Inject() (context : ExecutionContext) extends S
   ).headOption
 
   def createTables(): Unit = {
-
+    logger.info(s"Creating tables:")
+    Tables.schema.createIfNotExistsStatements
+      .toList
+      .foreach(stat => logger.info(stat))
+    Try {
+      val createStat = Tables.schema.createIfNotExists
+      Await.result(db.run(createStat), longDuration)
+    } match {
+      case Failure(err) => logger.error("Failed to create tables", err)
+      case Success(_) => logger.info("Finished creating tables")
+    }
   }
 }
 
