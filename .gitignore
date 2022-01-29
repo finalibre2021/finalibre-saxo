@@ -10,3 +10,4 @@
 /target/
 /conf/finalibre-saxo.jks
 /conf/temp-token.txt
+/conf/production.conf
