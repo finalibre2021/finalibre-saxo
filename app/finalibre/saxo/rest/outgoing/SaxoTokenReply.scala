@@ -2,6 +2,7 @@ package finalibre.saxo.rest.outgoing
 
 import com.auth0.jwt.JWT
 import com.auth0.jwt.interfaces.{Claim, DecodedJWT}
+import play.api.libs.json.Json
 
 import java.time.{Instant, LocalDateTime}
 import java.util.TimeZone
@@ -19,10 +20,15 @@ case class SaxoTokenReply(
 object SaxoTokenReply {
   private val numberRegex = "^[0-9]+$".r
 
-  def decryptJWTToken(token : String) = {
-    val dec = JWT.decode(token)
-    (optString(dec, "access_token"), optLong(dec, "expires_in")) match {
-      case (Some(accessToken), Some(expiresIn)) => Some(SaxoTokenReply(accessToken, expiresIn, optString(dec, "refresh_token"), optLong(dec, "refresh_token_expires_in")))
+  def parseSaxoReplyBody(body : String) = {
+    val json = Json.parse(body)
+    val accessToken = (json \ "access_token").asOpt[String]
+    val expiresIn = (json \ "expires_in").asOpt[Long]
+    val refreshAccessToken = (json \ "refresh_token").asOpt[String]
+    val refreshExpiresIn = (json \ "refresh_token_expires_in").asOpt[Long]
+
+    (accessToken, expiresIn) match {
+      case (Some(accTok), Some(expIn)) => Some(SaxoTokenReply(accTok, expIn, refreshAccessToken, refreshExpiresIn))
       case _ => None
 
     }

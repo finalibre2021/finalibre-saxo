@@ -2,6 +2,7 @@ package finalibre.saxo.rest.outgoing
 
 import controllers.AuthenticationCallbackController
 import finalibre.saxo.configuration.SaxoConfig
+import org.slf4j.LoggerFactory
 import play.api.libs.ws.WSClient
 import play.api.mvc._
 import play.api.mvc.Results.Redirect
@@ -11,13 +12,16 @@ import javax.inject.Inject
 import scala.concurrent.ExecutionContext
 
 class SaxoAuthenticator @Inject() (client : WSClient) {
+  private val logger = LoggerFactory.getLogger(this.getClass)
 
-  def buildRedirect(redirectUrl : String, nonce : String, state : String)(implicit executionContext: ExecutionContext) : Result = {
+  def buildRedirect(state : String)(implicit executionContext: ExecutionContext, request: Request[AnyContent]) : Result = {
     val conf = SaxoConfig.Rest.Outgoing
     val enc = encodeUrlParameter _
-    val url = s"${conf.authenticationUrl}?response_type=code&client_id=${enc(conf.clientId)}&state=${enc(state)}&redirect_uri=${enc(redirectUrl)}"
+    val callbackUrl = AuthenticationCallbackController.urlToCallback
+    val url = s"${conf.authenticationUrl}?response_type=code&client_id=${enc(conf.clientId)}&state=${enc(state)}&redirect_uri=${enc(callbackUrl)}"
     Redirect(url)
       .withHeaders("Content-Type" -> "application/x-www-form-urlencoded")
+
   }
 
   def exchangeCode(code : String)(implicit executionContext: ExecutionContext, request: Request[AnyContent]) = {
@@ -32,7 +36,9 @@ class SaxoAuthenticator @Inject() (client : WSClient) {
       .map {
         case resp => {
           val bodyString = resp.body
-          SaxoTokenReply.decryptJWTToken(bodyString)
+          logger.info(s"Exchanging code status: ${resp.status} : ${resp.statusText}")
+          logger.info(s"Body string from exchanging code: $bodyString")
+          SaxoTokenReply.parseSaxoReplyBody(bodyString)
         }
       }
 

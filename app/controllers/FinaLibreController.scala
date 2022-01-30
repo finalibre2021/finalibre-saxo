@@ -14,7 +14,6 @@ import scala.concurrent.{ExecutionContext, Future}
 class FinaLibreController @Inject()(
                                      cc : ControllerComponents,
                                      executionContext : ExecutionContext,
-                                     wsClient : WSClient,
                                      sessionRepository: SessionRepository,
                                      encryptor : Encryptor,
                                      saxoAuthenticator: SaxoAuthenticator
@@ -24,7 +23,7 @@ class FinaLibreController @Inject()(
 
   def index = actionFrom {
     case (request : Request[AnyContent], context) => {
-      Ok("All good")
+      Ok(s"All good... Context session ID: ${context.sessionId}")
     }
 
   }
@@ -63,10 +62,10 @@ class FinaLibreController @Inject()(
       )
     )
     logger.info(s"Sending state: $state")
-    val callbackUrl = FinaLibreController.urlToCallback
+    val callbackUrl = AuthenticationCallbackController.urlToCallback
     logger.info(s"Directing to forward URL: $callbackUrl")
     sessionRepository.initiateAuthenticationProcess(sessionId, ip, nonce, state, forwardUrl)
-    val redirectResult = saxoAuthenticator.buildRedirect(forwardUrl, nonce, state)
+    val redirectResult = saxoAuthenticator.buildRedirect(state)
     Future {
       redirectResult
     }
@@ -76,7 +75,6 @@ class FinaLibreController @Inject()(
 
 object FinaLibreController {
   case class FinaLibreControllerContext(sessionId : String)
-  def urlToCallback(implicit request : Request[_]) = routes.AuthenticationCallbackController.callback("","").absoluteURL(true).replaceAll("""\?.*""","")
 
   val AdminSessionCookie = "SESSIONID"
   val StateFieldSessionIdName = "SessionId"

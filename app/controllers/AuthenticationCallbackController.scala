@@ -17,7 +17,6 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 class AuthenticationCallbackController @Inject()(
                                                   cc : ControllerComponents,
                                                   executionContext : ExecutionContext,
-                                                  wsClient : WSClient,
                                                   encryptor : Encryptor,
                                                   sessionRepository: SessionRepository,
                                                   saxoAuthenticator: SaxoAuthenticator
@@ -26,7 +25,7 @@ class AuthenticationCallbackController @Inject()(
   implicit val ec = executionContext
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  def authorizationRequestCallback(state : String, code : String) : Action[AnyContent] = Action.async {
+  def authenticationRequestCallback(state : String, code : String) : Action[AnyContent] = Action.async {
     implicit request : Request[AnyContent] => {
       logger.debug(s"Got request and with state: $state and code: $code")
       val stateMap = encryptor.decryptAndDeserialize(state).toMap
@@ -59,7 +58,7 @@ class AuthenticationCallbackController @Inject()(
 }
 
 object AuthenticationCallbackController {
-  def urlToCallback(implicit request : Request[_]) = routes.AuthenticationCallbackController.callback("","").absoluteURL(true).replaceAll("""\?.*""","")
+  def urlToCallback(implicit request : Request[_]) = routes.AuthenticationCallbackController.authenticationRequestCallback("","").absoluteURL(true).replaceAll("""\?.*""","")
 
 }
 
