@@ -9,6 +9,7 @@ import slick.jdbc.PostgresProfile.api._
 
 import scala.concurrent.duration._
 import java.sql.Timestamp
+import java.time.LocalDateTime
 import java.util.UUID
 import javax.inject.Inject
 import scala.concurrent.{Await, ExecutionContext}
@@ -74,7 +75,7 @@ class PostgresSessionRepository @Inject() (context : ExecutionContext) extends S
 
   override def initiateAuthenticationProcess(sessionId: String, ip : String, nonce: String, state: String, forwardUrl: String): Unit = {
     val userSessionToInsert = UserSession(sessionId, ip, new Timestamp(System.currentTimeMillis()))
-    val processToInsert = AuthenticationProcess(sessionId, nonce, state, forwardUrl, None, None, None)
+    val processToInsert = AuthenticationProcess(sessionId, nonce, state, forwardUrl, None, None, None, None)
     val action = db.run(Tables.sessions += userSessionToInsert).flatMap(_ => db.run(Tables.processes += processToInsert))
     Await.result(action, shortDuration * 2)
   }
@@ -88,12 +89,12 @@ class PostgresSessionRepository @Inject() (context : ExecutionContext) extends S
     shortDuration
   ).headOption.isDefined
 
-  override def updateSaxoTokenData(sessionId: String, nonce: String, saxoAccessToken: String, refreshToken: String, validUntil: Timestamp): Unit = Await.result(
+  override def updateSaxoTokenData(sessionId : String, nonce : String, saxoAccessToken : String, validUntil : LocalDateTime, refreshToken : Option[String], refreshValidUntil : Option[LocalDateTime]): Unit = Await.result(
     db.run(
       Tables.processes
         .filter(proc => proc.sessionId === sessionId && proc.nonce === nonce)
-        .map(proc => (proc.saxoAccessToken, proc.saxoRefreshToken, proc.validUntil))
-        .update((Some(saxoAccessToken), Some(refreshToken), Some(validUntil)))
+        .map(proc => (proc.saxoAccessToken, proc.validUntil, proc.saxoRefreshToken, proc.refreshValidUntil))
+        .update((Some(saxoAccessToken), Some(Timestamp.valueOf(validUntil)), refreshToken, refreshValidUntil.map(ref => Timestamp.valueOf(ref)) ))
     ),
     shortDuration
   )

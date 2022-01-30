@@ -47,26 +47,9 @@ class Encryptor @Inject()(secret: ApplicationSecret) {
     decrypted.split(EntrySplitString).toList.map(_.split(PairSplitString)).filter(_.size == 2).map(en => en(0) -> en(1))
   }
 
-  def decryptJWTToken(token : String) = {
-    val dec = JWT.decode(token)
-    JWTToken(
-      dec.getIssuer,
-      dec.getAudience.asScala.toList,
-      dec.getSubject,
-      optClaim(dec.getClaim("email")).map(_.asString),
-      optClaim(dec.getClaim("email_verified")).map(_.asBoolean),
-      asLocalDateTime(dec.getClaim("iat").asLong),
-      asLocalDateTime(dec.getClaim("exp").asLong),
-      optClaim(dec.getClaim("nonce")).map(_.asString)
-    )
-  }
-
   def optClaim(cl : Claim) : Option[Claim] = if(cl.isNull) None else Some(cl)
   def asLocalDateTime(longVal : Long) = LocalDateTime.ofInstant(Instant.ofEpochMilli(longVal * 1000L), TimeZone.getDefault.toZoneId)
 
-
-
-  case class JWTToken(issuer : String, audience : Seq[String], subject : String, email : Option[String], emailVerified : Option[Boolean], issuedAt : LocalDateTime, expires : LocalDateTime, nonce : Option[String])
 
 
 }

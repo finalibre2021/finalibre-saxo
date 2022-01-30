@@ -1,5 +1,6 @@
 package finalibre.saxo.rest.outgoing
 
+import controllers.AuthenticationCallbackController
 import finalibre.saxo.configuration.SaxoConfig
 import play.api.libs.ws.WSClient
 import play.api.mvc._
@@ -19,14 +20,21 @@ class SaxoAuthenticator @Inject() (client : WSClient) {
       .withHeaders("Content-Type" -> "application/x-www-form-urlencoded")
   }
 
-  def exchangeCode(code : String, redirectUrl : String)(implicit executionContext: ExecutionContext) = {
+  def exchangeCode(code : String)(implicit executionContext: ExecutionContext, request: Request[AnyContent]) = {
     val conf = SaxoConfig.Rest.Outgoing
     val enc = encodeUrlParameter _
-    val parameterString = s"grant_type=authorization_code&code=${code}&client_id=${conf.clientId}&client_secret=${conf.clientSecret}&redirect_uri=${redirectUrl}"
+    val dummyRedirectUrl = AuthenticationCallbackController.urlToCallback
+    val parameterString = s"grant_type=authorization_code&code=${code}&client_id=${conf.clientId}&client_secret=${conf.clientSecret}&redirect_uri=${dummyRedirectUrl}"
     client
       .url(conf.tokenUrl)
       .withHttpHeaders("Content-Type" -> "application/x-www-form-urlencoded")
       .post(parameterString)
+      .map {
+        case resp => {
+          val bodyString = resp.body
+          SaxoTokenReply.decryptJWTToken(bodyString)
+        }
+      }
 
 
   }

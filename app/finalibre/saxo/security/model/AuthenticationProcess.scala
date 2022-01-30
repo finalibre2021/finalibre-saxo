@@ -8,6 +8,7 @@ case class AuthenticationProcess(
                                   state : String,
                                   forwardUrl : String,
                                   saxoAccessToken : Option[String],
+                                  validUntil : Option[Timestamp],
                                   saxoRefreshToken : Option[String],
-                                  validUntil : Option[Timestamp]
+                                  refreshValidUntil : Option[Timestamp]
                                 )

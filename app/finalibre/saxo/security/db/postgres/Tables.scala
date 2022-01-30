@@ -25,10 +25,11 @@ object Tables {
     def state = column[String]("SIGNINSTATE")
     def forwardUrl = column[String]("FORWARDURL", O.Length(2000))
     def saxoAccessToken = column[Option[String]]("ACCESSTOKEN")
-    def saxoRefreshToken = column[Option[String]]("REFRESHTOKEN")
-
     def validUntil = column[Option[Timestamp]]("VALIDUNTIL")
-    def * = (sessionId, nonce, state, forwardUrl, saxoAccessToken, saxoRefreshToken, validUntil) <> (AuthenticationProcess.tupled, AuthenticationProcess.unapply)
+    def saxoRefreshToken = column[Option[String]]("REFRESHTOKEN")
+    def refreshValidUntil = column[Option[Timestamp]]("REFRESHVALIDUNTIL")
+
+    def * = (sessionId, nonce, state, forwardUrl, saxoAccessToken, validUntil, saxoRefreshToken, refreshValidUntil) <> (AuthenticationProcess.tupled, AuthenticationProcess.unapply)
 
     def pk = primaryKey("PK_SECURITY_AUTHPROCESS", (sessionId, nonce))
     def fkSessionId = foreignKey("FK_AUTHPROCESS_SESSID", sessionId, sessions)(_.sessionId, onDelete = ForeignKeyAction.Cascade)

@@ -12,7 +12,7 @@ import java.sql.Timestamp
 import java.time.LocalDateTime
 import javax.inject.Inject
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 class AuthenticationCallbackController @Inject()(
                                                   cc : ControllerComponents,
@@ -20,66 +20,46 @@ class AuthenticationCallbackController @Inject()(
                                                   wsClient : WSClient,
                                                   encryptor : Encryptor,
                                                   sessionRepository: SessionRepository,
+                                                  saxoAuthenticator: SaxoAuthenticator
                                                 )(implicit inSys : ActorSystem,
                                                   inMat : Materializer) extends AbstractController(cc){
   implicit val ec = executionContext
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  def callback(state : String, code : String) : Action[AnyContent] = Action {
+  def authorizationRequestCallback(state : String, code : String) : Action[AnyContent] = Action.async {
     implicit request : Request[AnyContent] => {
       logger.debug(s"Got request and with state: $state and code: $code")
       val stateMap = encryptor.decryptAndDeserialize(state).toMap
       logger.debug(s"State map: ${stateMap.toList.map(p => p._1 + ":" + p._2).mkString("\r\n")}")
       (stateMap.get(FinaLibreController.StateFieldSessionIdName), stateMap.get(FinaLibreController.StateFieldIpName), stateMap.get(FinaLibreController.StateFieldNonceName)) match {
-        case (Some(sessIdStr), Some(ip), Some(nonce)) if sessionRepository.isValidNonceAndState(sessIdStr, nonce, state) => {
-          logger.info(s"Extracted from state map on callback: sessionId: $sessIdStr, IP: $ip, nonce: $nonce")
-          val sessionId = sessIdStr
-          val auther = new SaxoAuthenticator(wsClient)
-          val clientID = LocallykkeConfig.OpenID.clientId
-          val clientSecret = LocallykkeConfig.OpenID.secret
-          auther.exchangeCode(code, clientID, clientSecret,AdminController.urlToCallback) match  {
-            case Some(fut) => {
-              val res = Await.result(fut, 10.seconds)
-              val jwt = Encryption.decryptJWTToken(res.idToken)
-              logger.info(s"Extract JWT token from code given on callback: ${jwt}")
-              jwt match {
-                case JWTToken(_, _, _, Some(email), Some(true), issuedAt, expiresAt, Some(jwtNonce)) if expiresAt.isAfter(LocalDateTime.now())
-                    && issuedAt.isBefore(LocalDateTime.now())
-                    && LocallykkeConfig.adminUsers.map(_.toLowerCase).contains(email.toLowerCase) => {
-                  logger.info(s"Successfully authenticated user: ${email} on session ID: $sessionId")
-                  val sessionCookie = Cookie(AdminController.AdminSessionCookie, sessionId.toString)
-                  val validUntil = Timestamp.valueOf(expiresAt.plusDays(1L))
-                  site.sessionHandler.finalizeProcess(sessionId, nonce, email, validUntil)
-                  site.sessionHandler.retrieveForwardURL(sessionId, nonce) match {
-                    case None => Redirect(controllers.routes.ItemsController.index()).withCookies(sessionCookie).bakeCookies()
-                    case Some(url) => Redirect(url).withCookies(sessionCookie).bakeCookies()
-                  }
-                }
-
-                case JWTToken(issuer, audience, subject, email, emailVerified, issuedAt, expiresAt, jwtNonce) => {
-                  logger.info(s"Not all requirements for successful authentication are met")
-                  logger.info(s"  email: $email, email verified: $emailVerified, issued at: ${issuedAt.toString}, expires: ${expiresAt}")
-                  Results.Forbidden
-                }
-
+        case (Some(sessionId), Some(ip), Some(nonce)) if sessionRepository.isValidNonceAndState(sessionId, nonce, state) => {
+          logger.info(s"Extracted from state map on callback: sessionId: $sessionId, IP: $ip, nonce: $nonce")
+          saxoAuthenticator.exchangeCode(code).map {
+            case None => Results.BadGateway
+            case Some(token) => {
+              logger.info(s"Exchanging code to token succeeded. access_token: ${token.accessToken}")
+              sessionRepository.updateSaxoTokenData(sessionId, nonce, token.accessToken,token.expiresAt, token.refreshToken, token.refreshExpiresAt)
+              val sessionCookie = Cookie(FinaLibreController.AdminSessionCookie, sessionId)
+              sessionRepository.forwardUrlFor(sessionId, nonce) match {
+                case None => Ok("Oooops.... Don't know where to send ya").withCookies(sessionCookie).bakeCookies()
+                case Some(url) => Redirect(url).withCookies(sessionCookie).bakeCookies()
               }
             }
-            case None => {
-              logger.error(s"Unable to generate exchange code future")
-              Results.Forbidden
-            }
           }
-
         }
         case _ => {
           logger.info(s"Could not match state map: ${stateMap.toList.map(p => p._1 + ":" + p._2).mkString(",")}")
-          Results.Forbidden
+          Future {Results.Forbidden}
         }
       }
     }
   }
 
 
+}
+
+object AuthenticationCallbackController {
+  def urlToCallback(implicit request : Request[_]) = routes.AuthenticationCallbackController.callback("","").absoluteURL(true).replaceAll("""\?.*""","")
 
 }
 

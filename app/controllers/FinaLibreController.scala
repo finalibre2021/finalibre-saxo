@@ -55,7 +55,6 @@ class FinaLibreController @Inject()(
 
   def initiateAuthenticationFlow(ip : String, forwardUrl : String)(implicit req : Request[AnyContent]) = {
     val (sessionId, nonce) = sessionRepository.nextIdAndNonce()
-    val authenticator = new SaxoAuthenticator(wsClient)
     val state = encryptor.serializeAndEncrypt(
       List(
         FinaLibreController.StateFieldSessionIdName -> sessionId,

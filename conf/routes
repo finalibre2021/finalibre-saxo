@@ -1,2 +1,1 @@
 GET     /auth/callback                          controllers.AuthenticationCallbackController.callback(state : String, code : String)
-GET     /auth/logon                             controllers.
