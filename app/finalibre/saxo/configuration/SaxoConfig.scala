@@ -24,6 +24,7 @@ object SaxoConfig {
   object Rest {
     object Outgoing {
       private lazy val outConf = conf.getConfig("finalibre.saxo.rest.outgoing")
+      lazy val openApiBaseUrl = outConf.getString("open-api-base-url")
       lazy val authenticationUrl = outConf.getString("authentication-url")
       lazy val clientId = outConf.getString("client-id")
       lazy val clientSecret = outConf.getString("client-secret")

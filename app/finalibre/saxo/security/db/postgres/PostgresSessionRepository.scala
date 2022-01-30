@@ -74,7 +74,7 @@ class PostgresSessionRepository @Inject() (context : ExecutionContext) extends S
   ).headOption.isDefined
 
   override def initiateAuthenticationProcess(sessionId: String, ip : String, nonce: String, state: String, forwardUrl: String): Unit = {
-    val userSessionToInsert = UserSession(sessionId, ip, new Timestamp(System.currentTimeMillis()))
+    val userSessionToInsert = UserSession(sessionId, ip, now)
     val processToInsert = AuthenticationProcess(sessionId, nonce, state, forwardUrl, None, None, None, None)
     val action = db.run(Tables.sessions += userSessionToInsert).flatMap(_ => db.run(Tables.processes += processToInsert))
     Await.result(action, shortDuration * 2)
@@ -88,6 +88,17 @@ class PostgresSessionRepository @Inject() (context : ExecutionContext) extends S
     ),
     shortDuration
   ).headOption.isDefined
+
+  override def liveSaxoToken(sessionId : String) : Option[String] = Await.result(
+    db.run(
+      (Tables.sessions.filter(sess => sess.sessionId === sessionId) join
+        Tables.processes.filter(proc => proc.validUntil > now && proc.saxoAccessToken.isDefined) on {_.sessionId === _.sessionId}
+        ).map(p => (p._2.saxoAccessToken -> p._2.validUntil)).result),
+    shortDuration
+  ).sortBy(p => - p._2.get.getTime)
+    .headOption
+    .flatMap(p => p._1)
+
 
   override def updateSaxoTokenData(sessionId : String, nonce : String, saxoAccessToken : String, validUntil : LocalDateTime, refreshToken : Option[String], refreshValidUntil : Option[LocalDateTime]): Unit = Await.result(
     db.run(

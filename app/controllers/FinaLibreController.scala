@@ -2,7 +2,7 @@ package controllers
 
 import akka.actor.ActorSystem
 import akka.stream.Materializer
-import finalibre.saxo.rest.outgoing.SaxoAuthenticator
+import finalibre.saxo.rest.outgoing.{OpenApiService, SaxoAuthenticator}
 import finalibre.saxo.security.{Encryptor, SessionRepository}
 import org.slf4j.LoggerFactory
 import play.api.libs.ws.WSClient
@@ -16,25 +16,29 @@ class FinaLibreController @Inject()(
                                      executionContext : ExecutionContext,
                                      sessionRepository: SessionRepository,
                                      encryptor : Encryptor,
-                                     saxoAuthenticator: SaxoAuthenticator
+                                     saxoAuthenticator: SaxoAuthenticator,
+                                     openApiService: OpenApiService
                                    )(implicit inSys : ActorSystem, inMat : Materializer) extends AbstractController(cc) {
   protected lazy val logger = LoggerFactory.getLogger(this.getClass)
   private implicit val ec = executionContext
 
   def index = actionFrom {
     case (request : Request[AnyContent], context) => {
-      Ok(s"All good... Context session ID: ${context.sessionId}")
+      openApiService.defaultClient()(context.token).map {
+        case Left(err) => Ok(err)
+        case Right(client) => Ok(s"Logged in client ID: ${client.clientId}, client key: ${client.clientKey}, name: ${client.name}")
+      }
+
     }
 
   }
 
-  def actionFrom(act : (Request[AnyContent], FinaLibreController.FinaLibreControllerContext) => Result) : Action[AnyContent] = Action.async {
+  def actionFrom(act : (Request[AnyContent], FinaLibreController.FinaLibreControllerContext) => Future[Result]) : Action[AnyContent] = Action.async {
     request: Request[AnyContent] =>
       authenticate(request) match {
         case Left(fut) => fut
-        case Right(contx) => Future {
+        case Right(contx) =>
           act(request, contx)
-        }
       }
   }
 
@@ -45,8 +49,10 @@ class FinaLibreController @Inject()(
     request.cookies.get(FinaLibreController.AdminSessionCookie) match {
       case Some(cook) => {
         val sessionId = cook.value
-        if(sessionRepository.isAuthorized(sessionId, ip)) Right(FinaLibreController.FinaLibreControllerContext(sessionId))
-        else Left(initiateAuthenticationFlow(ip,forwardUrl))
+        (sessionRepository.isAuthorized(sessionId, ip), sessionRepository.liveSaxoToken(sessionId)) match {
+          case (true, Some(token)) => Right(FinaLibreController.FinaLibreControllerContext(sessionId, token))
+          case _ => Left(initiateAuthenticationFlow(ip,forwardUrl)) // TODO: Implement handling of refresh
+        }
       }
       case _ => Left(initiateAuthenticationFlow(ip, forwardUrl))
     }
@@ -74,7 +80,7 @@ class FinaLibreController @Inject()(
 }
 
 object FinaLibreController {
-  case class FinaLibreControllerContext(sessionId : String)
+  case class FinaLibreControllerContext(sessionId : String, token : String)
 
   val AdminSessionCookie = "SESSIONID"
   val StateFieldSessionIdName = "SessionId"
