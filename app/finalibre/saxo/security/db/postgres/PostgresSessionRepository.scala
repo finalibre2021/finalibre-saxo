@@ -99,6 +99,14 @@ class PostgresSessionRepository @Inject() (context : ExecutionContext) extends S
     .headOption
     .flatMap(p => p._1)
 
+  override def liveSaxoRefreshTokenFor(token : String) : Option[String] = Await.result(
+    db.run(
+      Tables.processes.filter(proc => proc.saxoAccessToken === token && proc.refreshValidUntil > now && proc.saxoRefreshToken.isDefined)
+        .map(proc => proc.saxoRefreshToken).result),
+    shortDuration
+  ).headOption.flatten
+
+
 
   override def updateSaxoTokenData(sessionId : String, nonce : String, saxoAccessToken : String, validUntil : LocalDateTime, refreshToken : Option[String], refreshValidUntil : Option[LocalDateTime]): Unit = Await.result(
     db.run(

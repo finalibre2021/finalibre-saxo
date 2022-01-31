@@ -33,6 +33,7 @@ object Tables {
 
     def pk = primaryKey("PK_SECURITY_AUTHPROCESS", (sessionId, nonce))
     def fkSessionId = foreignKey("FK_AUTHPROCESS_SESSID", sessionId, sessions)(_.sessionId, onDelete = ForeignKeyAction.Cascade)
+    def idxToken = index("IDX_SECURITY_AUTHPROCESS_TOKEN", (saxoAccessToken), false)
 
   }
 

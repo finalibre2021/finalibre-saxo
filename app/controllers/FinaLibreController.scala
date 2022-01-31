@@ -25,7 +25,7 @@ class FinaLibreController @Inject()(
   def index = actionFrom {
     case (request : Request[AnyContent], context) => {
       openApiService.defaultClient()(context.token).map {
-        case Left(err) => Ok(err)
+        case Left(err) => Ok(err.toString)
         case Right(client) => Ok(s"Logged in client ID: ${client.clientId}, client key: ${client.clientKey}, name: ${client.name}")
       }
 
