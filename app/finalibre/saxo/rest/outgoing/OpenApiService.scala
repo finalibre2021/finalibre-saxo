@@ -7,19 +7,19 @@ import finalibre.saxo.security.SessionRepository
 import org.slf4j.LoggerFactory
 import responses.ServiceResult._
 import play.api.libs.json.{JsObject, JsValue, Json, Reads}
-import play.api.libs.ws.{BodyWritable, WSClient, WSRequest, WSResponse}
+import play.api.libs.ws.{BodyWritable, WSAuthScheme, WSClient, WSRequest, WSResponse}
 import play.api.mvc.Results.Redirect
 import play.api.mvc.{AnyContent, Request, Result}
 
 import java.net.URLEncoder
+import java.util.Base64
 import javax.inject._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
 class OpenApiService @Inject()(
                                 client : WSClient,
-                                execContext: ExecutionContext,
-                                sessionRepository : SessionRepository
+                                execContext: ExecutionContext
                               ) {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -41,17 +41,17 @@ class OpenApiService @Inject()(
     postQueryStringWithRead("token",None,List(
       "grant_type" -> "authorization_code",
       "code" -> code,
-      "client_id" -> clientId,
-      "client_secret" -> clientSecret,
-      "redirect_uri" -> dummyUrl),
-      baseUrl = authorizationBaseUrl)(ResponseAuthorizationToken.reads)
+      "client_id" -> clientId),
+      baseUrl = authorizationBaseUrl,
+      useBasicAuthentication = true)(ResponseAuthorizationToken.reads)
 
-  def refreshToken(refreshToken : String) : Future[CallResult[ResponseAuthorizationToken]] =
+  def refreshToken(refreshToken : String, currentToken : String) : Future[CallResult[ResponseAuthorizationToken]] =
     postQueryStringWithRead("token",None, List(
       "grant_type" -> "refresh_token",
       "refresh_token" -> refreshToken,
       "redirect_uri" -> dummyUrl),
-      baseUrl = authorizationBaseUrl)(ResponseAuthorizationToken.reads)
+      baseUrl = authorizationBaseUrl,
+    useBasicAuthentication = true)(ResponseAuthorizationToken.reads)
 
 
   def buildAuthorizationRedirect(state : String, callbackUrl : String) : Result = {
@@ -74,27 +74,27 @@ class OpenApiService @Inject()(
 
 
   private def get[A](endpoint : String, token : Option[String], urlArguments : List[(String, String)]= Nil, baseUrl : String = openApiBaseUrl)(func : JsValue => A) : Future[CallResult[A]] =
-    perform(req => req.get())(endpoint,token, urlArguments, baseUrl)(func)
+    perform(req => req.get())(endpoint,token, urlArguments, baseUrl, false)(func)
 
   private def getAndRead[A](endpoint : String, token : Option[String], urlArguments : List[(String, String)]= Nil, baseUrl : String = openApiBaseUrl)(implicit reads : Reads[A]) : Future[CallResult[A]] =
     performAndRead(req => req.get())(endpoint,token, urlArguments, baseUrl)(reads)
 
-  private def postQueryStringWithRead[A](endpoint : String, token : Option[String], formData : List[(String, String)], urlArguments : List[(String, String)]= Nil, baseUrl : String = openApiBaseUrl)(implicit reads : Reads[A]) : Future[CallResult[A]] =
+  private def postQueryStringWithRead[A](endpoint : String, token : Option[String], formData : List[(String, String)], urlArguments : List[(String, String)]= Nil, baseUrl : String = openApiBaseUrl, useBasicAuthentication : Boolean = false)(implicit reads : Reads[A]) : Future[CallResult[A]] =
     {
       val body = buildParameterString(formData, true)
-      logger.info(s"POST: parameter body: $body")
+      logger.debug(s"POST: parameter body: $body")
       performAndRead(req => req
         .withHttpHeaders("Content-Type" -> "application/x-www-form-urlencoded")
         .post(body)
-      )(endpoint,token, urlArguments, baseUrl)(reads)
+      )(endpoint,token, urlArguments, baseUrl, useBasicAuthentication = useBasicAuthentication)(reads)
     }
 
 
 
-  private def performAndRead[A](verb : WSRequest => Future[WSResponse])(endpoint : String, token : Option[String], urlArguments : List[(String, String)] = Nil, baseUrl : String = openApiBaseUrl)(implicit reads : Reads[A]) : Future[CallResult[A]] =
-    perform(verb)(endpoint, token, urlArguments, baseUrl)((js : JsValue) => js.as[A])
+  private def performAndRead[A](verb : WSRequest => Future[WSResponse])(endpoint : String, token : Option[String], urlArguments : List[(String, String)] = Nil, baseUrl : String = openApiBaseUrl, useBasicAuthentication : Boolean = false)(implicit reads : Reads[A]) : Future[CallResult[A]] =
+    perform(verb)(endpoint, token, urlArguments, baseUrl,useBasicAuthentication)((js : JsValue) => js.as[A])
 
-  private def perform[A](verb : WSRequest => Future[WSResponse])(endpoint : String, token : Option[String], urlArguments : List[(String, String)], baseUrl : String)(func : JsValue => A) : Future[CallResult[A]] = {
+  private def perform[A](verb : WSRequest => Future[WSResponse])(endpoint : String, token : Option[String], urlArguments : List[(String, String)], baseUrl : String, useBasicAuthentication : Boolean)(func : JsValue => A) : Future[CallResult[A]] = {
     Try {
       val url = if(baseUrl.endsWith("/")) s"$baseUrl$endpoint" else s"$baseUrl/$endpoint"
       logger.info(s"Accessing URL: $url, with URL parameters: ${urlArguments.map(p => p._1 + "=" + p._2.mkString(","))}")
@@ -104,6 +104,9 @@ class OpenApiService @Inject()(
       token.foreach {
         case token => req = req.withHttpHeaders(OpenApiService.AuthorizationHeaderName -> s"BEARER $token")
       }
+      if(useBasicAuthentication)
+        req = req.withAuth(clientId, clientSecret, WSAuthScheme.BASIC)
+
       verb(req).map(res => filterSuccess(res) match {
           case Right(resp) => {
             val toRet = (for (
@@ -121,8 +124,9 @@ class OpenApiService @Inject()(
 
           case left @ Left(err) => Left(err)
         })
-    }
-  } match {
+
+      }
+    } match {
     case Failure(err) => Future { Left(ExceptionError(err))}
     case Success(fut) => fut
   }

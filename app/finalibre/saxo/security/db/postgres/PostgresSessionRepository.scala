@@ -26,7 +26,7 @@ class PostgresSessionRepository @Inject() (context : ExecutionContext) extends S
       setMaximumPoolSize(dbConf.noOfParallel)
     }
   )
-  private val db = Database.forDataSource(dataSource, Some(dbConf.noOfParallel))
+  val db = Database.forDataSource(dataSource, Some(dbConf.noOfParallel))
   private val shortDuration = 5.seconds
   private val longDuration = 1.minute
   private def now = new Timestamp(System.currentTimeMillis())
