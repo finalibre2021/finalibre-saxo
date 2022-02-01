@@ -31,7 +31,12 @@
     <appender-ref ref="STDOUT" />
   </appender>
 
+  <logger name="" level="play.api.libs.ws.WSClient">
+    <appender-ref ref="WARN" />
+  </logger>
+
   <logger name="play" level="INFO" />
+
   <logger name="application" level="DEBUG" />
 
   <root level="INFO">

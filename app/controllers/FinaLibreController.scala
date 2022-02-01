@@ -2,7 +2,7 @@ package controllers
 
 import akka.actor.ActorSystem
 import akka.stream.Materializer
-import finalibre.saxo.rest.outgoing.{OpenApiService, SaxoAuthenticator}
+import finalibre.saxo.rest.outgoing.OpenApiService
 import finalibre.saxo.security.{Encryptor, SessionRepository}
 import org.slf4j.LoggerFactory
 import play.api.libs.ws.WSClient
@@ -16,7 +16,6 @@ class FinaLibreController @Inject()(
                                      executionContext : ExecutionContext,
                                      sessionRepository: SessionRepository,
                                      encryptor : Encryptor,
-                                     saxoAuthenticator: SaxoAuthenticator,
                                      openApiService: OpenApiService
                                    )(implicit inSys : ActorSystem, inMat : Materializer) extends AbstractController(cc) {
   protected lazy val logger = LoggerFactory.getLogger(this.getClass)
@@ -71,7 +70,7 @@ class FinaLibreController @Inject()(
     val callbackUrl = AuthenticationCallbackController.urlToCallback
     logger.info(s"Directing to forward URL: $callbackUrl")
     sessionRepository.initiateAuthenticationProcess(sessionId, ip, nonce, state, forwardUrl)
-    val redirectResult = saxoAuthenticator.buildRedirect(state)
+    val redirectResult = openApiService.buildAuthorizationRedirect(state, callbackUrl)
     Future {
       redirectResult
     }

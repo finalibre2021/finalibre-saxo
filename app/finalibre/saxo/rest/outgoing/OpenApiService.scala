@@ -1,12 +1,17 @@
 package finalibre.saxo.rest.outgoing
 
+import controllers.AuthenticationCallbackController
 import finalibre.saxo.configuration.SaxoConfig
-import finalibre.saxo.rest.outgoing.responses.ResponseClient
+import finalibre.saxo.rest.outgoing.responses.{ResponseAuthorizationToken, ResponseClient}
 import finalibre.saxo.security.SessionRepository
+import org.slf4j.LoggerFactory
 import responses.ServiceResult._
-import play.api.libs.json.{JsObject, JsValue, Json}
+import play.api.libs.json.{JsObject, JsValue, Json, Reads}
 import play.api.libs.ws.{BodyWritable, WSClient, WSRequest, WSResponse}
+import play.api.mvc.Results.Redirect
+import play.api.mvc.{AnyContent, Request, Result}
 
+import java.net.URLEncoder
 import javax.inject._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
@@ -17,31 +22,45 @@ class OpenApiService @Inject()(
                                 sessionRepository : SessionRepository
                               ) {
 
+  private val logger = LoggerFactory.getLogger(this.getClass)
   private implicit val executionContext = execContext
-  private val baseUrl = SaxoConfig.Rest.Outgoing.openApiBaseUrl
+  private val openApiBaseUrl = SaxoConfig.Rest.Outgoing.openApiBaseUrl
+  private val authorizationBaseUrl = SaxoConfig.Rest.Outgoing.authenticationBaseUrl
+  private val clientId = SaxoConfig.Rest.Outgoing.clientId
+  private val clientSecret = SaxoConfig.Rest.Outgoing.clientSecret
+  private val dummyUrl = "https://localhost/index"
 
-  def isConnected(token : String) : Future[Boolean] = get("root/v1/sessions/capabilities", token)(_ => true) map {
+  def isConnected(token : String) : Future[Boolean] = get("root/v1/sessions/capabilities", Some(token))(_ => true) map {
     case Right(_) => true
     case _ => false
   }
 
-  def defaultClient()(token : String) : Future[CallResult[ResponseClient]] = get("port/v1/clients/me", token)(json => ResponseClient(
-    (json \ "ClientId").as[String],
-    (json \ "ClientKey").as[String],
-    (json \ "DefaultAccountId").as[String],
-    (json \ "DefaultAccountKey").as[String],
-    (json \ "DefaultCurrency").as[String],
-    (json \ "Name").as[String],
-    (json \ "PartnerPlatformId").asOpt[String]
-  )
+  def defaultClient()(token : String) : Future[CallResult[ResponseClient]] = getAndRead("port/v1/clients/me", Some(token))(ResponseClient.reads)
 
-  )
+  def exchangeCode(code : String) : Future[CallResult[ResponseAuthorizationToken]] =
+    postQueryStringWithRead("token",None,List(
+      "grant_type" -> "authorization_code",
+      "code" -> code,
+      "client_id" -> clientId,
+      "client_secret" -> clientSecret,
+      "redirect_uri" -> dummyUrl),
+      baseUrl = authorizationBaseUrl)(ResponseAuthorizationToken.reads)
 
-  private def urlFor(endpoint : String, urlArguments : List[(String, String)] = Nil) : String = {
-    val url = s"${baseUrl}/${endpoint}${if(urlArguments.isEmpty) "" else "?"}"
-    val returnee = urlArguments.foldLeft(url)((curr, p) => curr + (if(curr.endsWith("&")) "" else "&") + p._1 + "=" + p._2)
-    returnee
+  def refreshToken(refreshToken : String) : Future[CallResult[ResponseAuthorizationToken]] =
+    postQueryStringWithRead("token",None, List(
+      "grant_type" -> "refresh_token",
+      "refresh_token" -> refreshToken,
+      "redirect_uri" -> dummyUrl),
+      baseUrl = authorizationBaseUrl)(ResponseAuthorizationToken.reads)
+
+
+  def buildAuthorizationRedirect(state : String, callbackUrl : String) : Result = {
+    val conf = SaxoConfig.Rest.Outgoing
+    val url = s"${authorizationBaseUrl}/authorize?response_type=code&client_id=${enc(conf.clientId)}&state=${enc(state)}&redirect_uri=${enc(callbackUrl)}"
+    Redirect(url)
+      .withHeaders("Content-Type" -> "application/x-www-form-urlencoded")
   }
+
 
   private def filterSuccess(resp : WSResponse) = resp.status match {
     case 401 => Left(AuthorizationError)
@@ -54,21 +73,37 @@ class OpenApiService @Inject()(
   }
 
 
-  private def get[A](endpoint : String, token : String, urlArguments : List[(String, String)]= Nil, setAuthorizationHeader : Boolean = true)(func : JsValue => A) : Future[CallResult[A]] =
-    perform(req => req.get(), setAuthorizationHeader)(endpoint,token, urlArguments)(func)
+  private def get[A](endpoint : String, token : Option[String], urlArguments : List[(String, String)]= Nil, baseUrl : String = openApiBaseUrl)(func : JsValue => A) : Future[CallResult[A]] =
+    perform(req => req.get())(endpoint,token, urlArguments, baseUrl)(func)
 
-  private def post[A](endpoint : String, token : String, formData : Map[String, Seq[String]], urlArguments : List[(String, String)]= Nil, setAuthorizationHeader : Boolean = true)(func : JsValue => A) : Future[CallResult[A]] =
-    perform(req => req.post(formData), setAuthorizationHeader)(endpoint,token, urlArguments)(func)
+  private def getAndRead[A](endpoint : String, token : Option[String], urlArguments : List[(String, String)]= Nil, baseUrl : String = openApiBaseUrl)(implicit reads : Reads[A]) : Future[CallResult[A]] =
+    performAndRead(req => req.get())(endpoint,token, urlArguments, baseUrl)(reads)
 
-  private def post[A](endpoint : String, token : String, jsonData : JsObject, urlArguments : List[(String, String)]= Nil, setAuthorizationHeader : Boolean = true)(func : JsValue => A) : Future[CallResult[A]] =
-    perform(req => req.post(jsonData), setAuthorizationHeader)(endpoint,token, urlArguments)(func)
+  private def postQueryStringWithRead[A](endpoint : String, token : Option[String], formData : List[(String, String)], urlArguments : List[(String, String)]= Nil, baseUrl : String = openApiBaseUrl)(implicit reads : Reads[A]) : Future[CallResult[A]] =
+    {
+      val body = buildParameterString(formData, true)
+      logger.info(s"POST: parameter body: $body")
+      performAndRead(req => req
+        .withHttpHeaders("Content-Type" -> "application/x-www-form-urlencoded")
+        .post(body)
+      )(endpoint,token, urlArguments, baseUrl)(reads)
+    }
 
 
-  private def perform[A](verb : WSRequest => Future[WSResponse], setAuthorizationHeader : Boolean)(endpoint : String, token : String, urlArguments : List[(String, String)] = Nil)(func : JsValue => A) : Future[CallResult[A]] = {
+
+  private def performAndRead[A](verb : WSRequest => Future[WSResponse])(endpoint : String, token : Option[String], urlArguments : List[(String, String)] = Nil, baseUrl : String = openApiBaseUrl)(implicit reads : Reads[A]) : Future[CallResult[A]] =
+    perform(verb)(endpoint, token, urlArguments, baseUrl)((js : JsValue) => js.as[A])
+
+  private def perform[A](verb : WSRequest => Future[WSResponse])(endpoint : String, token : Option[String], urlArguments : List[(String, String)], baseUrl : String)(func : JsValue => A) : Future[CallResult[A]] = {
     Try {
-      var req = client.url(urlFor(endpoint, urlArguments))
-      if(setAuthorizationHeader)
-        req = req.withHttpHeaders(OpenApiService.AuthorizationHeaderName -> s"BEARER $token")
+      val url = if(baseUrl.endsWith("/")) s"$baseUrl$endpoint" else s"$baseUrl/$endpoint"
+      logger.info(s"Accessing URL: $url, with URL parameters: ${urlArguments.map(p => p._1 + "=" + p._2.mkString(","))}")
+      var req = client
+        .url(url)
+        .withQueryStringParameters(urlArguments : _ *)
+      token.foreach {
+        case token => req = req.withHttpHeaders(OpenApiService.AuthorizationHeaderName -> s"BEARER $token")
+      }
       verb(req).map(res => filterSuccess(res) match {
           case Right(resp) => {
             val toRet = (for (
@@ -93,14 +128,11 @@ class OpenApiService @Inject()(
   }
 
 
-  def refreshToken(token : String) : CallResult[String] = Try {
-    sessionRepository.liveSaxoRefreshTokenFor(token) match {
-      case Some(refr) => {
-        val resp = post()
-      }
-    }
-  }
+  private def buildParameterString(map : List[(String, String)], encode : Boolean) = map
+    .map(p => p._1 + "=" + (if(encode) enc(p._2) else p._2))
+    .mkString("&")
 
+  private def enc = (str : String) => URLEncoder.encode(str, "UTF-8")
 
 
 

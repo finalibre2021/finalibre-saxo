@@ -2,24 +2,22 @@ package controllers
 
 import akka.actor.ActorSystem
 import akka.stream.Materializer
-import finalibre.saxo.rest.outgoing.SaxoAuthenticator
+import finalibre.saxo.rest.outgoing.OpenApiService
+import finalibre.saxo.rest.outgoing.responses.ServiceResult
 import finalibre.saxo.security.{Encryptor, SessionRepository}
 import org.slf4j.LoggerFactory
-import play.api.libs.ws.WSClient
 import play.api.mvc._
 
-import java.sql.Timestamp
-import java.time.LocalDateTime
 import javax.inject.Inject
-import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future}
 
 class AuthenticationCallbackController @Inject()(
                                                   cc : ControllerComponents,
                                                   executionContext : ExecutionContext,
                                                   encryptor : Encryptor,
                                                   sessionRepository: SessionRepository,
-                                                  saxoAuthenticator: SaxoAuthenticator
+                                                  openApiService: OpenApiService
+
                                                 )(implicit inSys : ActorSystem,
                                                   inMat : Materializer) extends AbstractController(cc){
   implicit val ec = executionContext
@@ -33,16 +31,24 @@ class AuthenticationCallbackController @Inject()(
       (stateMap.get(FinaLibreController.StateFieldSessionIdName), stateMap.get(FinaLibreController.StateFieldIpName), stateMap.get(FinaLibreController.StateFieldNonceName)) match {
         case (Some(sessionId), Some(ip), Some(nonce)) if sessionRepository.isValidNonceAndState(sessionId, nonce, state) => {
           logger.info(s"Extracted from state map on callback: sessionId: $sessionId, IP: $ip, nonce: $nonce")
-          saxoAuthenticator.exchangeCode(code).map {
-            case None => Results.BadGateway
-            case Some(token) => {
-              logger.info(s"Exchanging code to token succeeded. access_token: ${token.accessToken}")
-              sessionRepository.updateSaxoTokenData(sessionId, nonce, token.accessToken,token.expiresAt, token.refreshToken, token.refreshExpiresAt)
+          openApiService.exchangeCode(code).map {
+            case Left(err) => {
+              logger.error(s"Failed to exchange code for token. Code: ${code}")
+              err match {
+                case ServiceResult.ExceptionError(throwable) => logger.error("Error from exchange of token", throwable)
+                case oth => logger.error(s"Error from exchange of token: ${oth}")
+              }
+              Results.BadGateway
+            }
+            case Right(resp) => {
+              logger.info(s"Exchanging code to token succeeded. access_token: ${resp.accessToken}")
+              sessionRepository.updateSaxoTokenData(sessionId, nonce, resp.accessToken,resp.expiresAt, resp.refreshToken, resp.refreshExpiresAt)
               val sessionCookie = Cookie(FinaLibreController.AdminSessionCookie, sessionId)
               sessionRepository.forwardUrlFor(sessionId, nonce) match {
                 case None => Ok("Oooops.... Don't know where to send ya").withCookies(sessionCookie).bakeCookies()
                 case Some(url) => Redirect(url).withCookies(sessionCookie).bakeCookies()
               }
+
             }
           }
         }
