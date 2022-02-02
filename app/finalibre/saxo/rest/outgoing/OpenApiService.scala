@@ -45,7 +45,7 @@ class OpenApiService @Inject()(
       baseUrl = authorizationBaseUrl,
       useBasicAuthentication = true)(ResponseAuthorizationToken.reads)
 
-  def refreshToken(refreshToken : String, currentToken : String) : Future[CallResult[ResponseAuthorizationToken]] =
+  def refreshToken(refreshToken : String) : Future[CallResult[ResponseAuthorizationToken]] =
     postQueryStringWithRead("token",None, List(
       "grant_type" -> "refresh_token",
       "refresh_token" -> refreshToken,

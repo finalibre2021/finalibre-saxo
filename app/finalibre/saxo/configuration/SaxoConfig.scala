@@ -8,6 +8,9 @@ object SaxoConfig {
     .load("application.conf")
     .withFallback(ConfigFactory.load())
 
+  lazy val tokenLockLifeSpanInMinutes = conf.getInt("token-lock-lifespan-minutes")
+  lazy val tokenRefreshIntervalInMinutes = conf.getInt("token-refresh-interval-minutes")
+
 
   object Security {
     private lazy val secretKey = conf.getString("play.http.secret.key")

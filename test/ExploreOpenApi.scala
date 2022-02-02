@@ -32,7 +32,7 @@ object ExploreOpenApi {
 
     latestValidTokenWithRefresh.foreach {
       proc => {
-        openApiClient.refreshToken(proc.saxoRefreshToken.get, proc.saxoAccessToken.get).foreach {
+        openApiClient.refreshToken(proc.saxoRefreshToken.get).foreach {
           case Left(err) => println(s"Error, error, error: $err")
           case Right(resp) => {
             println(s"Success: refresh token: ${proc.saxoRefreshToken.get}")

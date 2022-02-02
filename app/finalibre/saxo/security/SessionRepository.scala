@@ -1,5 +1,7 @@
 package finalibre.saxo.security
 
+import finalibre.saxo.security.model.AuthenticationProcess
+
 import java.sql.Timestamp
 import java.time.LocalDateTime
 
@@ -13,7 +15,9 @@ trait SessionRepository {
   def liveSaxoToken(sessionId : String) : Option[String]
   def liveSaxoRefreshTokenFor(token : String) : Option[String]
   def updateSaxoTokenData(sessionId : String, nonce : String, saxoAccessToken : String, validUntil : LocalDateTime, refreshToken : Option[String], refreshValidUntil : Option[LocalDateTime]) : Unit
+  def updateSaxoTokenDataByCurrentToken(sessionId : String, currentToken : String, saxoAccessToken : String, validUntil : LocalDateTime, refreshToken : Option[String], refreshValidUntil : Option[LocalDateTime]) : Unit
   def forwardUrlFor(sessionId : String, nonce : String) : Option[String]
+  def processesToRefreshTokenFor : Seq[AuthenticationProcess]
 
 
 
