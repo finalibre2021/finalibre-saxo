@@ -2,7 +2,7 @@ package finalibre.saxo.rest.outgoing
 
 import controllers.AuthenticationCallbackController
 import finalibre.saxo.configuration.SaxoConfig
-import finalibre.saxo.rest.outgoing.responses.{ResponseAuthorizationToken, ResponseClient}
+import finalibre.saxo.rest.outgoing.responses.{ResponseAccount, ResponseAuthorizationToken, ResponseClient}
 import finalibre.saxo.security.SessionRepository
 import org.slf4j.LoggerFactory
 import responses.ServiceResult._
@@ -35,7 +35,17 @@ class OpenApiService @Inject()(
     case _ => false
   }
 
-  def defaultClient()(token : String) : Future[CallResult[ResponseClient]] = getAndRead("port/v1/clients/me", Some(token))(ResponseClient.reads)
+  def defaultClient()(token : String) : Future[CallResult[ResponseClient]] =
+    getAndRead("port/v1/clients/me", Some(token))(ResponseClient.reads)
+
+  def accounts(clientKey : String)(token : String) : Future[CallResult[List[ResponseAccount]]] =
+    (getAndRead( s"port/v1/accounts/?ClientKey=${enc(clientKey)}&IncludeSubAccounts=true", Some(token))
+  (ResponseAccount.dataReads)).map {
+      case res => res match {
+        case Right(re) => Right(re.Data.toList)
+        case Left(er) => Left(er)
+      }
+  }
 
   def exchangeCode(code : String) : Future[CallResult[ResponseAuthorizationToken]] =
     postQueryStringWithRead("token",None,List(
