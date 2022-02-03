@@ -15,10 +15,8 @@ case class ResponseAccount(
                           )
 
 object ResponseAccount {
-  implicit val config = JsonConfiguration(PascalCase)
-
+  implicit val config = Encoding.DefaultConfiguration
   private implicit val responseReads = Json.reads[ResponseAccount]
   private implicit val dataReads : Reads[DataObject[ResponseAccount]] = Json.reads[DataObject[ResponseAccount]]
   implicit val reads : Reads[List[ResponseAccount]] = dataReads.map(accDat => accDat.data.toList)
-
 }

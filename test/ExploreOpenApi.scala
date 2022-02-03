@@ -43,7 +43,7 @@ object ExploreOpenApi {
     latestValidToken.foreach {
       case token => {
         println(s"Got token: $token")
-        openApiClient.accounts(ClientKey)(token).foreach {
+        openApiClient.positions(None, ClientKey, ClientKey)(token).foreach {
           case resp => resp match {
             case Right(res) => {
               println("Got response")

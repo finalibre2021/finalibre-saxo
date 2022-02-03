@@ -2,7 +2,7 @@ package finalibre.saxo.rest.outgoing
 
 import controllers.AuthenticationCallbackController
 import finalibre.saxo.configuration.SaxoConfig
-import finalibre.saxo.rest.outgoing.responses.{ResponseAccount, ResponseAuthorizationToken, ResponseClient}
+import finalibre.saxo.rest.outgoing.responses.{ResponseAccount, ResponseAuthorizationToken, ResponseClient, ResponsePosition}
 import finalibre.saxo.security.SessionRepository
 import org.slf4j.LoggerFactory
 import play.api.libs.json.JsonNaming.PascalCase
@@ -41,6 +41,14 @@ class OpenApiService @Inject()(
 
   def accounts(clientKey : String)(token : String) : Future[CallResult[List[ResponseAccount]]] =
     (getAndRead( s"port/v1/accounts/?ClientKey=${enc(clientKey)}&IncludeSubAccounts=true", Some(token)))
+
+  def positions(accountGroupKey : Option[String], accountKey : String, clientKey : String)(token : String): Future[CallResult[List[ResponsePosition]]] = {
+    val args = List(
+      "AccountGroupKey" -> accountGroupKey,
+      "AccountKey" -> Some(accountKey),
+      "ClientKey" -> Some(clientKey)) collect {case (nam, Some(value)) => nam -> value}
+    getAndRead(s"port/v1/positions", Some(token), args)
+  }
 
   def exchangeCode(code : String) : Future[CallResult[ResponseAuthorizationToken]] =
     postQueryStringWithRead("token",None,List(
@@ -102,7 +110,7 @@ class OpenApiService @Inject()(
   private def perform[A](verb : WSRequest => Future[WSResponse])(endpoint : String, token : Option[String], urlArguments : List[(String, String)], baseUrl : String, useBasicAuthentication : Boolean)(func : JsValue => A) : Future[CallResult[A]] = {
     Try {
       val url = if(baseUrl.endsWith("/")) s"$baseUrl$endpoint" else s"$baseUrl/$endpoint"
-      logger.info(s"Accessing URL: $url, with URL parameters: ${urlArguments.map(p => p._1 + "=" + p._2.mkString(","))}")
+      logger.info(s"Accessing URL: $url, with URL parameters: ${urlArguments.map(p => p._1 + "=" + p._2)}")
       var req = client
         .url(url)
         .withQueryStringParameters(urlArguments : _ *)

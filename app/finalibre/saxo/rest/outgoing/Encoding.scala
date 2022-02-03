@@ -1,10 +1,9 @@
 package finalibre.saxo.rest.outgoing
 
-import play.api.libs.json.JsonNaming
+import play.api.libs.json.JsonNaming.PascalCase
+import play.api.libs.json.{JsonConfiguration, JsonNaming}
 
 object Encoding {
-  /*object PascalCasingNamingStrategy extends JsonNaming {
-    override def apply(property: String): String = property.substring(0,1).toUpperCase + property.substring(1,property.length)
-  }*/
+  val DefaultConfiguration = JsonConfiguration(PascalCase)
 
 }
