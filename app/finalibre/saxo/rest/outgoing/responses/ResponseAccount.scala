@@ -1,6 +1,8 @@
 package finalibre.saxo.rest.outgoing.responses
+import finalibre.saxo.rest.outgoing.Encoding
 import play.api.libs.functional.syntax._
-import play.api.libs.json.{JsPath, Json, Reads}
+import play.api.libs.json.JsonNaming.PascalCase
+import play.api.libs.json.{JsPath, Json, JsonConfiguration, Reads}
 
 case class ResponseAccount(
                           accountGroupKey : String,
@@ -13,18 +15,10 @@ case class ResponseAccount(
                           )
 
 object ResponseAccount {
-  private implicit val casedReads : Reads[CasedResponseAccount] = Json.reads[CasedResponseAccount]
-  private implicit val dataReads : Reads[DataObject[CasedResponseAccount]] = Json.reads[DataObject[CasedResponseAccount]]
-  implicit val reads : Reads[List[ResponseAccount]] = dataReads.map(datAcc => datAcc.Data.toList.map(
-    acc => ResponseAccount(acc.AccountGroupKey, acc.AccountId, acc.AccountKey, acc.AccountSubType, acc.AccountType, acc.Active, acc.Currency)
-  ))
+  implicit val config = JsonConfiguration(PascalCase)
 
-
-
-  private case class CasedResponseAccount(
-                                           AccountGroupKey : String,AccountId : String,AccountKey : String,AccountSubType : String,
-                                           AccountType : String, Active : Boolean, Currency : String
-                                         )
-
+  private implicit val responseReads = Json.reads[ResponseAccount]
+  private implicit val dataReads : Reads[DataObject[ResponseAccount]] = Json.reads[DataObject[ResponseAccount]]
+  implicit val reads : Reads[List[ResponseAccount]] = dataReads.map(accDat => accDat.data.toList)
 
 }

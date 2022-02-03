@@ -5,8 +5,9 @@ import finalibre.saxo.configuration.SaxoConfig
 import finalibre.saxo.rest.outgoing.responses.{ResponseAccount, ResponseAuthorizationToken, ResponseClient}
 import finalibre.saxo.security.SessionRepository
 import org.slf4j.LoggerFactory
+import play.api.libs.json.JsonNaming.PascalCase
 import responses.ServiceResult._
-import play.api.libs.json.{JsObject, JsValue, Json, Reads}
+import play.api.libs.json.{JsObject, JsValue, Json, JsonConfiguration, Reads}
 import play.api.libs.ws.{BodyWritable, WSAuthScheme, WSClient, WSRequest, WSResponse}
 import play.api.mvc.Results.Redirect
 import play.api.mvc.{AnyContent, Request, Result}
@@ -39,7 +40,7 @@ class OpenApiService @Inject()(
     getAndRead("port/v1/clients/me", Some(token))(ResponseClient.reads)
 
   def accounts(clientKey : String)(token : String) : Future[CallResult[List[ResponseAccount]]] =
-    (getAndRead( s"port/v1/accounts/?ClientKey=${enc(clientKey)}&IncludeSubAccounts=true", Some(token)))(ResponseAccount.reads)
+    (getAndRead( s"port/v1/accounts/?ClientKey=${enc(clientKey)}&IncludeSubAccounts=true", Some(token)))
 
   def exchangeCode(code : String) : Future[CallResult[ResponseAuthorizationToken]] =
     postQueryStringWithRead("token",None,List(
