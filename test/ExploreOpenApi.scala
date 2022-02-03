@@ -27,7 +27,7 @@ object ExploreOpenApi {
     val db = repo.db
     val now = new Timestamp(System.currentTimeMillis())
     //refreshToken(openApiClient, db, repo)
-    val latestValidToken = Await.result(
+    /*val latestValidToken = Await.result(
       db.run(Tables.processes
         .filter(proc => proc.saxoAccessToken.isDefined && proc.saxoAccessToken.isDefined && proc.validUntil > now)
         .result
@@ -36,7 +36,9 @@ object ExploreOpenApi {
       .headOption
       .flatMap(_.saxoAccessToken)
 
-    println(latestValidToken)
+    println(latestValidToken)*/
+    val latestValidToken = Some(Util.tempKey)
+
 
     latestValidToken.foreach {
       case token => {

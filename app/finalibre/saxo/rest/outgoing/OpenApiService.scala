@@ -39,13 +39,7 @@ class OpenApiService @Inject()(
     getAndRead("port/v1/clients/me", Some(token))(ResponseClient.reads)
 
   def accounts(clientKey : String)(token : String) : Future[CallResult[List[ResponseAccount]]] =
-    (getAndRead( s"port/v1/accounts/?ClientKey=${enc(clientKey)}&IncludeSubAccounts=true", Some(token))
-  (ResponseAccount.dataReads)).map {
-      case res => res match {
-        case Right(re) => Right(re.Data.toList)
-        case Left(er) => Left(er)
-      }
-  }
+    (getAndRead( s"port/v1/accounts/?ClientKey=${enc(clientKey)}&IncludeSubAccounts=true", Some(token)))(ResponseAccount.reads)
 
   def exchangeCode(code : String) : Future[CallResult[ResponseAuthorizationToken]] =
     postQueryStringWithRead("token",None,List(
