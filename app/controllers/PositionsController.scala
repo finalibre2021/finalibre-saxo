@@ -16,9 +16,16 @@ class PositionsController @Inject()(
                                      encryptor : Encryptor,
                                      openApiService: OpenApiService
                                    )(implicit inSys : ActorSystem, inMat : Materializer) extends FinaLibreController(cc, executionContext, sessionRepository, encryptor, openApiService){
+  private implicit val execContx = executionContext
 
-  def positionsIndex() : Action[AnyContent] = Action {
-    implicit request : Request[AnyContent] => Ok(views.html.main())
+  def positionsIndex() : Action[AnyContent] = actionFrom {
+    case (request : Request[AnyContent], context) => {
+      implicit val contx = context
+      callOn(serv => serv.defaultClient()(context.token)).map {
+        case Left(err) => Ok(err.toString)
+        case Right(client) => Ok(views.html.positions())
+      }
+    }
   }
 
 }

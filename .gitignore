@@ -12,3 +12,5 @@
 /conf/temp-token.txt
 /conf/production.conf
 /client/target/
+/public/images/logo.png
+/public/images/saxo-image.png
