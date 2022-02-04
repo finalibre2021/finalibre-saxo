@@ -1,4 +1,4 @@
-package finalibre.saxo.positions
+package finalibre.saxo.client.positions
 
 import scala.scalajs.js.annotation.{JSExport, JSExportTopLevel}
 

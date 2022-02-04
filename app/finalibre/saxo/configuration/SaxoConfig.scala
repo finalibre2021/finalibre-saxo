@@ -7,9 +7,10 @@ object SaxoConfig {
   private lazy val conf = ConfigFactory
     .load("application.conf")
     .withFallback(ConfigFactory.load())
+  private lazy val saxoConf = conf.getConfig("finalibre.saxo")
 
-  lazy val tokenLockLifeSpanInMinutes = conf.getInt("token-lock-lifespan-minutes")
-  lazy val tokenRefreshIntervalInMinutes = conf.getInt("token-refresh-interval-minutes")
+  lazy val tokenLockLifeSpanInMinutes = saxoConf.getInt("token-lock-lifespan-minutes")
+  lazy val tokenRefreshIntervalInMinutes = saxoConf.getInt("token-refresh-interval-minutes")
 
 
   object Security {
@@ -18,7 +19,7 @@ object SaxoConfig {
   }
 
   object Persistance {
-    private lazy val dbConf = conf.getConfig("finalibre.saxo.db")
+    private lazy val dbConf = saxoConf.getConfig("db")
     lazy val applicationDb = ConnectionDetails(dbConf.getString("url"), dbConf.getString("user"), dbConf.getString("password"), dbConf.getInt("no-of-threads"))
 
     case class ConnectionDetails(url : String, user : String, password : String, noOfParallel : Int )
@@ -26,7 +27,7 @@ object SaxoConfig {
 
   object Rest {
     object Outgoing {
-      private lazy val outConf = conf.getConfig("finalibre.saxo.rest.outgoing")
+      private lazy val outConf = saxoConf.getConfig("rest.outgoing")
       lazy val openApiBaseUrl = outConf.getString("open-api-base-url")
       lazy val authenticationBaseUrl = outConf.getString("authentication-base-url")
       lazy val clientId = outConf.getString("client-id")

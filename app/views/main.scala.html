@@ -1,5 +1,8 @@
 @*(title : String, headerAddOn : Html = Html(""), caller : String)(content : Html) *@
-()
+@()
+
+@import _root_.finalibre.saxo.client.positions.Positions
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,6 +10,9 @@
     <link rel="stylesheet" media="screen" href="@controllers.routes.FinalibreAssets.at("lib/bootstrap/css/bootstrap.css")"/>
     <script src="@controllers.routes.FinalibreAssets.jsLibrary()" type="text/javascript"></script>
         @* @headerAddOn *@
+    <script type="module">
+        Positions.main()
+    </script>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-light" style="background-color: #F8E8A2;" id="main-navbar">
@@ -16,12 +22,11 @@
         <div class="collapse navbar-collapse justify-content-between">
           <ul class="navbar-nav">
             <li class="nav-item mx-3">
-                <a class="nav-link" href="@controllers.PositionsController.index" id="main-link-pages">Positions</a>
+                <a class="nav-link" href="@controllers.routes.PositionsController.positionsIndex()" id="main-link-pages">Positions</a>
             </li>
           </ul>
        </div>
       </div>
     </nav>
-    @content
     <div id="main-modal-holder"/>
 </body>
