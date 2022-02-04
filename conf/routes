@@ -1,2 +1,7 @@
 GET     /auth/callback                          controllers.AuthenticationCallbackController.authenticationRequestCallback(state : String, code : String)
-GET     /index                                  controllers.FinaLibreController.index
+GET     /index()                                controllers.PositionsController.positionsIndex()
+
+GET     /assets/finalibre-saxo.js               controllers.FinalibreAssets.jsLibrary()
+GET     /assets/finalibre-saxo.js.map           controllers.FinalibreAssets.jsLibraryMap()
+
+GET     /assets/*file                           controllers.FinalibreAssets.at(file)
