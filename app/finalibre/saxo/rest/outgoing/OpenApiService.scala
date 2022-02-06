@@ -39,13 +39,21 @@ class OpenApiService @Inject()(
   def defaultClient()(token : String) : Future[CallResult[ResponseClient]] =
     getAndRead("port/v1/clients/me", Some(token))(ResponseClient.reads)
 
+  def clients()(token : String) : Future[CallResult[Seq[ResponseClient]]] = {
+    defaultClient()(token).flatMap {
+      case Left(err) => Future{ Left(err)  }
+      case Right(client) => getAndRead("port/v1/clients", Some(token), List("OwnerKey" -> client.clientKey))
+    }
+  }
+
+
   def accounts(clientKey : String)(token : String) : Future[CallResult[List[ResponseAccount]]] =
     (getAndRead( s"port/v1/accounts/?ClientKey=${enc(clientKey)}&IncludeSubAccounts=true", Some(token)))
 
-  def positions(accountGroupKey : Option[String], accountKey : String, clientKey : String)(token : String): Future[CallResult[List[ResponsePosition]]] = {
+  def positions(accountGroupKey : Option[String], accountKey : Option[String], clientKey : String)(token : String): Future[CallResult[List[ResponsePosition]]] = {
     val args = List(
       "AccountGroupKey" -> accountGroupKey,
-      "AccountKey" -> Some(accountKey),
+      "AccountKey" -> accountKey,
       "ClientKey" -> Some(clientKey)) collect {case (nam, Some(value)) => nam -> value}
     getAndRead(s"port/v1/positions", Some(token), args)
   }
