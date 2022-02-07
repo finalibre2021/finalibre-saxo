@@ -4,6 +4,7 @@ import controllers.FinaLibreController
 import finalibre.saxo.configuration.SaxoConfig
 import finalibre.saxo.rest.outgoing.OpenApiService
 import finalibre.saxo.security.SessionRepository
+import finalibre.saxo.util.Pingable
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext
@@ -18,4 +19,5 @@ class SaxoScheduler  @Inject()(actorSystem : ActorSystem, sessionRepository: Ses
     FinaLibreController.cleanUpUnusedSessionLocks()
     FinaLibreController.refreshRelevantConnections(sessionRepository, openApiService)
   })
+  actorSystem.scheduler.scheduleAtFixedRate(25.seconds,25.seconds)(() => Pingable.ping())
 }

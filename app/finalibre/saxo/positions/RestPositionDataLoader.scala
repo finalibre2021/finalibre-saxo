@@ -1,5 +1,6 @@
 package finalibre.saxo.positions
 
+import finalibre.saxo.positions.RestPositionDataLoader.OpenApiCallingContext
 import finalibre.saxo.positions.model.{Account, Client, Position}
 import finalibre.saxo.rest.outgoing.OpenApiService
 
@@ -7,10 +8,10 @@ import scala.concurrent.{ExecutionContext, Future}
 import finalibre.saxo.positions.mappers.ClientMappers._
 import finalibre.saxo.positions.mappers.PositionMappers._
 
-class RestPositionDataLoader(apiService: OpenApiService, executionContext: ExecutionContext) extends PositionDataLoader {
+class RestPositionDataLoader(executionContext: ExecutionContext) extends PositionDataLoader {
   implicit val execContext = executionContext
 
-  override def loadClients(token : String) : Future[Either[String, Seq[Client]]] = apiService.clients()(token).map {
+  override def loadClients(token : String)(implicit callingContext : OpenApiCallingContext[]) : Future[Either[String, Seq[Client]]] = apiService.clients()(token).map {
     case Right(value) => Right(value.map(_.toModel))
     case Left(err) => Left(err.errorString)
   }
@@ -57,7 +58,8 @@ class RestPositionDataLoader(apiService: OpenApiService, executionContext: Execu
 
 
   )
+}
 
-
-
+object RestPositionDataLoader {
+  type OpenApiCallingContext[A] = (OpenApiService => Future[A]) => Future[A]
 }
