@@ -2,7 +2,7 @@ package finalibre.saxo.rest.outgoing
 
 import finalibre.saxo.configuration.SaxoConfig
 import finalibre.saxo.rest.outgoing.responses.ServiceResult
-import finalibre.saxo.rest.outgoing.responses.ServiceResult.CallResult
+import finalibre.saxo.rest.outgoing.responses.ServiceResult.{AuthorizationError, CallResult}
 import finalibre.saxo.security.SessionRepository
 import finalibre.saxo.util.DateExtensions.ExtendedLocalDateTime
 import org.slf4j.LoggerFactory
@@ -16,6 +16,8 @@ case class OpenApiCallingContext(sessionId : String, token : String) {
 
 object OpenApiCallingContext {
   private val logger = LoggerFactory.getLogger(this.getClass)
+
+  type OpenApiFunction[A] = (OpenApiService, OpenApiCallingContext) => Future[CallResult[A]]
 
   case class LockEntry(sessionId : String) {
     val lock = new {}
@@ -66,11 +68,26 @@ object OpenApiCallingContext {
     }
   }
 
-  def callOn[A](call : OpenApiService => Future[CallResult[A]], sessionId : String)(implicit openApiService: OpenApiService, executionContext: ExecutionContext, sessionRepository: SessionRepository) : Future[CallResult[A]] =
-    sessionRepository.
+  def call[A](call : OpenApiFunction[A], sessionId : String)(implicit openApiService: OpenApiService, executionContext: ExecutionContext, sessionRepository: SessionRepository) : Future[CallResult[A]] =
+    sessionRepository.liveSaxoToken(sessionId) match {
+      case Some(token) => {
+        implicit val context = OpenApiCallingContext(sessionId, token)
+        callOn(call)
+      }
+      case None => sessionRepository.liveSaxoRefreshTokenFor(sessionId) match {
+        case Some(refreshToken) => refreshAndCall(refreshToken, None, call,sessionId)
+        case None => Future {
+          Left(AuthorizationError)
+        }
+      }
+    }
+
+  def call[A](call : OpenApiFunction[A])(implicit openApiCallingContext: OpenApiCallingContext, openApiService: OpenApiService, executionContext: ExecutionContext, sessionRepository: SessionRepository) =
+    callOn(call)
 
 
-  private def callOn[A](call : OpenApiService => Future[CallResult[A]], openApiService: OpenApiService, sessionRepository: SessionRepository)(implicit context : OpenApiCallingContext, executionContext: ExecutionContext) : Future[CallResult[A]] = {
+  private def callOn[A](call : OpenApiFunction[A])
+                       (implicit context : OpenApiCallingContext, openApiService: OpenApiService, sessionRepository: SessionRepository, executionContext: ExecutionContext) : Future[CallResult[A]] = {
     val sessionId = context.sessionId
     val token = context.token
     var lockObjectOpt : Option[LockEntry] = None
@@ -84,19 +101,11 @@ object OpenApiCallingContext {
     }
     lockObjectOpt.get.lock.synchronized {
       lockObjectOpt.get.lastUsed = LocalDateTime.now()
-      call(openApiService).flatMap {
+      call(openApiService, context).flatMap {
         case success @ Right(value) => Future{ success }
         case Left(ServiceResult.AuthorizationError) => {
           sessionRepository.liveSaxoRefreshTokenFor(context.token) match {
-            case Some(refreshToken) => {
-              openApiService.refreshToken(refreshToken).flatMap {
-                case Right(tokenReply) => {
-                  sessionRepository.updateSaxoTokenDataByCurrentToken(sessionId, token, tokenReply.accessToken, tokenReply.expiresAt, tokenReply.refreshToken, tokenReply.refreshExpiresAt)
-                  callOn(call, openApiService, sessionRepository)
-                }
-                case Left(err) => Future { Left(err) }
-              }
-            }
+            case Some(refreshToken) => refreshAndCall(refreshToken,Some(token), call, sessionId)
             case _ => Future{ Left(ServiceResult.OtherError("Access token not valid and no live refresh token exists")) }
           }
         }
@@ -104,6 +113,23 @@ object OpenApiCallingContext {
       }
     }
   }
+
+  private def refreshAndCall[A](refreshToken : String, currentToken : Option[String], call : OpenApiFunction[A], sessionId : String)
+                               (implicit openApiService: OpenApiService, sessionRepository: SessionRepository, executionContext: ExecutionContext) : Future[CallResult[A]] =
+    openApiService.refreshToken(refreshToken).flatMap {
+    case Right(tokenReply) => {
+      currentToken match {
+        case Some(oldToken) => sessionRepository.updateSaxoTokenDataByCurrentToken(sessionId, oldToken, tokenReply.accessToken, tokenReply.expiresAt, tokenReply.refreshToken, tokenReply.refreshExpiresAt)
+        case None => sessionRepository.updateLatestSaxoTokenDataBySessionId(sessionId,tokenReply.accessToken, tokenReply.expiresAt, tokenReply.refreshToken, tokenReply.refreshExpiresAt)
+      }
+      implicit val context = OpenApiCallingContext(sessionId, tokenReply.accessToken)
+      callOn(call)
+    }
+    case Left(err) => Future { Left(err) }
+  }
+
+
+
 
 
 }

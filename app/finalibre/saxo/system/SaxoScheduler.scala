@@ -2,7 +2,7 @@ package finalibre.saxo.system
 import akka.actor.ActorSystem
 import controllers.FinaLibreController
 import finalibre.saxo.configuration.SaxoConfig
-import finalibre.saxo.rest.outgoing.OpenApiService
+import finalibre.saxo.rest.outgoing.{OpenApiCallingContext, OpenApiService}
 import finalibre.saxo.security.SessionRepository
 import finalibre.saxo.util.Pingable
 
@@ -16,8 +16,8 @@ class SaxoScheduler  @Inject()(actorSystem : ActorSystem, sessionRepository: Ses
     SaxoConfig.tokenRefreshIntervalInMinutes.minutes,
     SaxoConfig.tokenRefreshIntervalInMinutes.minutes
   )(() => {
-    FinaLibreController.cleanUpUnusedSessionLocks()
-    FinaLibreController.refreshRelevantConnections(sessionRepository, openApiService)
+    OpenApiCallingContext.cleanUpUnusedSessionLocks()
+    OpenApiCallingContext.refreshRelevantConnections(sessionRepository, openApiService)
   })
   actorSystem.scheduler.scheduleAtFixedRate(25.seconds,25.seconds)(() => Pingable.ping())
 }

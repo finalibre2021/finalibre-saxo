@@ -31,21 +31,21 @@ class OpenApiService @Inject()(
     case _ => false
   }
 
-  def defaultClient()(implicit callingContext : OpenApiCallingContext) : Future[CallResult[ResponseClient]] =
+  def defaultClient(callingContext : OpenApiCallingContext) : Future[CallResult[ResponseClient]] =
     getAndRead("port/v1/clients/me", Some(callingContext))(ResponseClient.reads)
 
-  def clients()(implicit callingContext : OpenApiCallingContext) : Future[CallResult[Seq[ResponseClient]]] = {
-    defaultClient().flatMap {
+  def clients(callingContext : OpenApiCallingContext) : Future[CallResult[Seq[ResponseClient]]] = {
+    defaultClient(callingContext).flatMap {
       case Left(err) => Future{ Left(err)  }
       case Right(client) => getAndRead("port/v1/clients", Some(callingContext), List("OwnerKey" -> client.clientKey))
     }
   }
 
 
-  def accounts(clientKey : String)(implicit callingContext : OpenApiCallingContext) : Future[CallResult[List[ResponseAccount]]] =
+  def accounts(clientKey : String, callingContext : OpenApiCallingContext) : Future[CallResult[List[ResponseAccount]]] =
     (getAndRead( s"port/v1/accounts/?ClientKey=${enc(clientKey)}&IncludeSubAccounts=true", Some(callingContext)))
 
-  def positions(accountGroupKey : Option[String], accountKey : Option[String], clientKey : String)(implicit callingContext : OpenApiCallingContext): Future[CallResult[List[ResponsePosition]]] = {
+  def positions(accountGroupKey : Option[String], accountKey : Option[String], clientKey : String, callingContext : OpenApiCallingContext): Future[CallResult[List[ResponsePosition]]] = {
     val args = List(
       "AccountGroupKey" -> accountGroupKey,
       "AccountKey" -> accountKey,

@@ -6,7 +6,7 @@ import play.api.libs.json.Json
 
 trait Pingable {
   this : Actor =>
-  protected[scheduled] implicit val pingFormat = Json.writes[Ping.type]
+  implicit val pingFormat = Json.writes[Ping.type]
 
   val pingableId = Pingable.nextId
   def pingOut : ActorRef
@@ -24,7 +24,7 @@ trait Pingable {
 
 object Pingable {
   object Ping
-  protected[scheduled] val pingMessage = Ping
+  val pingMessage = Ping
   private var id = 0L
   def nextId = Pingable.synchronized {
     id += 1

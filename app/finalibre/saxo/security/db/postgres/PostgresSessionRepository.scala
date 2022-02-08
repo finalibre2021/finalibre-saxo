@@ -106,6 +106,14 @@ class PostgresSessionRepository @Inject() (context : ExecutionContext) extends S
     shortDuration
   ).headOption.flatten
 
+  override def liveSaxoRefreshTokenForSessionId(sessionId: String): Option[String] = Await.result(
+    db.run(
+      Tables.processes.filter(proc => proc.sessionId === sessionId && proc.refreshValidUntil > now && proc.saxoRefreshToken.isDefined)
+        .map(proc => proc.saxoRefreshToken).result),
+    shortDuration
+  ).headOption.flatten
+
+
   override def processesToRefreshTokenFor : Seq[AuthenticationProcess] = Await.result(
     db.run(
       Tables.processes.filter(proc =>
@@ -141,6 +149,20 @@ class PostgresSessionRepository @Inject() (context : ExecutionContext) extends S
     shortDuration
   )
 
+  override def updateLatestSaxoTokenDataBySessionId(sessionId: String, saxoAccessToken: String, validUntil: LocalDateTime, refreshToken: Option[String], refreshValidUntil: Option[LocalDateTime]): Unit = {
+    val latestProcessId = Tables.processes.sortBy(_.validUntil.desc).map(en => en.saxoAccessToken).take(1)
+    Await.result(
+      db.run(
+        Tables.processes
+          .filter(proc => proc.sessionId === sessionId && latestProcessId.filter(en => en === proc.saxoAccessToken).exists)
+          .map(proc => (proc.saxoAccessToken, proc.validUntil, proc.saxoRefreshToken, proc.refreshValidUntil))
+          .update((Some(saxoAccessToken), Some(Timestamp.valueOf(validUntil)), refreshToken, refreshValidUntil.map(ref => Timestamp.valueOf(ref))))
+      ),
+      shortDuration
+    )
+  }
+
+
 
   override def forwardUrlFor(sessionId: String, nonce: String): Option[String] = Await.result(
     db.run(
@@ -165,6 +187,7 @@ class PostgresSessionRepository @Inject() (context : ExecutionContext) extends S
       case Success(_) => logger.info("Finished creating tables")
     }
   }
+
 }
 
 object PostgresSessionRepository {

@@ -1,23 +1,32 @@
 package finalibre.saxo.positions
 
-import finalibre.saxo.positions.RestPositionDataLoader.OpenApiCallingContext
 import finalibre.saxo.positions.model.{Account, Client, Position}
-import finalibre.saxo.rest.outgoing.OpenApiService
+import finalibre.saxo.rest.outgoing.{OpenApiCallingContext, OpenApiService}
 
 import scala.concurrent.{ExecutionContext, Future}
 import finalibre.saxo.positions.mappers.ClientMappers._
 import finalibre.saxo.positions.mappers.PositionMappers._
+import finalibre.saxo.security.SessionRepository
 
-class RestPositionDataLoader(executionContext: ExecutionContext) extends PositionDataLoader {
-  implicit val execContext = executionContext
+private class RestPositionDataLoader(sessionId : String, openApiService: OpenApiService, sessionRepository: SessionRepository, executionContext: ExecutionContext) extends PositionDataLoader {
+  implicit val executionContextImplicit = executionContext
+  implicit val openApiServiceImplicit = openApiService
+  implicit val sessionRepositoryImplicit = sessionRepository
 
-  override def loadClients(token : String)(implicit callingContext : OpenApiCallingContext[]) : Future[Either[String, Seq[Client]]] = apiService.clients()(token).map {
-    case Right(value) => Right(value.map(_.toModel))
+  override def loadClients(): Future[Either[String, Seq[Client]]] = OpenApiCallingContext.call(
+    (api, cont) => api.clients(cont),
+    sessionId
+  ).map {
     case Left(err) => Left(err.errorString)
+    case Right(clients) => Right(clients.map(_.toModel))
   }
-  override def loadPositions(clientKey : String, token : String) : Future[Either[String, Seq[Position]]] = apiService.positions(None, None, clientKey)(token).map {
-    case Right(value) => Right(samplePositionsFor(clientKey))
+
+  override def loadPositions(clientKey: String): Future[Either[String, Seq[Position]]] = OpenApiCallingContext.call(
+    (api, cont) => api.positions(None,None, clientKey, cont),
+    sessionId
+  ).map {
     case Left(err) => Left(err.errorString)
+    case Right(clients) => Right(samplePositionsFor(clientKey)) //Right(clients.map(_.toModel))
   }
 
   def samplePositionsFor(accountId : String) : Seq[Position] = List(
@@ -55,11 +64,10 @@ class RestPositionDataLoader(executionContext: ExecutionContext) extends Positio
       263.23d * 6.5d,
       263.23d
     )
-
-
   )
 }
 
 object RestPositionDataLoader {
-  type OpenApiCallingContext[A] = (OpenApiService => Future[A]) => Future[A]
+  def apply(sessionId : String)(implicit openApiService: OpenApiService, sessionRepository: SessionRepository, executionContext: ExecutionContext) : PositionDataLoader =
+    new RestPositionDataLoader(sessionId, openApiService, sessionRepository, executionContext)
 }
