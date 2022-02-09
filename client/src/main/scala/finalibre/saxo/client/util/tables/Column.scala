@@ -27,6 +27,7 @@ abstract class Column[A, B] {
 
 object Column {
   abstract class StringColumn[A] extends Column[A,String] {override def format(b : String) = Some(b)}
+  abstract class LongColumn[A] extends Column[A,Long] {override def format(d : Long) = Some(d.toString)}
   abstract class DoubleColumn[A] extends Column[A,Double] {override def format(d : Double) = Some(d.toPrettyString)}
   abstract class DateColumn[A] extends Column[A,Date] {override def format(d : Date) = Some(d.toDateString)}
   abstract class DateTimeColumn[A] extends Column[A,LocalDateTime] {override def format(d : LocalDateTime) = Some(d.toDateTimeString)}
@@ -44,6 +45,18 @@ object Column {
       }
     }
   }
+
+  object LongColumn {
+    def apply[A](inId : String, inName : String, inValue : A => Option[Long], inOnClick : Option[EventHandler] = None) = {
+      new LongColumn[A] {
+        override val id = inId
+        override val name = inName
+        override def value(a: A): Option[Long] = inValue(a)
+        override def onClick(a : A) : Option[EventHandler] = inOnClick
+      }
+    }
+  }
+
 
   object DoubleColumn {
     def apply[A](inId : String, inName : String, inValue : A => Option[Double], inOnClick : Option[EventHandler] = None) = {

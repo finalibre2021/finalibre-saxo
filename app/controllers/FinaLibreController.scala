@@ -14,7 +14,7 @@ import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.JsObject
 import play.api.libs.streams.ActorFlow
 import play.api.libs.ws._
-import play.api.mvc.{AbstractController, Action, AnyContent, ControllerComponents, Request, Result, WebSocket}
+import play.api.mvc.{AbstractController, Action, AnyContent, ControllerComponents, Request, RequestHeader, Result, WebSocket}
 
 import java.time.LocalDateTime
 import javax.inject.Inject
@@ -38,17 +38,24 @@ class FinaLibreController @Inject()(
     case (request : Request[AnyContent], context) => {
       callOn((api,cont) => api.defaultClient(cont), context.sessionId).map {
         case Left(err) => Ok(err.toString)
-        case Right(client) => Ok(s"Logged in client ID: ${client.clientId}, client key: ${client.clientKey}, name: ${client.name}")
+        case Right(client) => Redirect(routes.PositionsController.positionsIndex())
       }
     }
   }
 
-  def wsFrom(actorCreator : (ActorRef) => Actor) = WebSocket.acceptOrResult[Any, JsObject] {
+  def wsFrom(actorCreator : (ActorRef, OpenApiCallingContext) => Actor) = WebSocket.acceptOrResult[Any, JsObject] {
     case request => {
       Future.successful {
-        Right(ActorFlow.actorRef {
-          case out => Props(actorCreator(out))
-        } )
+        val contextOpt = for(
+          cook <- request.cookies.get(FinaLibreController.AdminSessionCookie);
+          token <- sessionRepository.liveSaxoToken(cook.value)
+        ) yield OpenApiCallingContext(cook.value, token)
+        contextOpt match {
+          case Some(cont) => Right(ActorFlow.actorRef {
+            case out => Props(actorCreator(out, cont))
+          } )
+          case None =>Left(Forbidden)
+        }
       }
     }
   }
@@ -80,6 +87,7 @@ class FinaLibreController @Inject()(
       case _ => Left(initiateAuthenticationFlow(ip, forwardUrl))
     }
   }
+
 
   def initiateAuthenticationFlow(ip : String, forwardUrl : String)(implicit req : Request[AnyContent]) = {
     val (sessionId, nonce) = sessionRepository.nextIdAndNonce()

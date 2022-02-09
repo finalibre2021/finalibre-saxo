@@ -1,9 +1,8 @@
 package finalibre.saxo.positions.model
 
-import java.time.{LocalDate, LocalDateTime}
-
 case class Position(
                    positionId : String,
+                   clientId : String,
                    accountId : String,
                    assetType: String,
                    status: String,

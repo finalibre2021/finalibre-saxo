@@ -9,6 +9,7 @@ object PositionMappers {
   implicit class PositionMapper(pos : Position) {
     def toDto = PositionDto(
       pos.positionId,
+      pos.clientId,
       pos.accountId,
       pos.assetType,
       pos.status,
@@ -29,6 +30,7 @@ object PositionMappers {
   implicit class ResponsePositionMapper(resp : ResponsePosition){
     def toModel = Position(
       resp.positionId,
+      resp.positionBase.clientId,
       resp.positionBase.accountId,
       resp.positionBase.assetType,
       resp.positionBase.status,

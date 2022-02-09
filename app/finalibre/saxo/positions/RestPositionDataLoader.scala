@@ -33,6 +33,7 @@ private class RestPositionDataLoader(sessionId : String, openApiService: OpenApi
     Position(
       "KR7005930003",
       accountId,
+      accountId,
       "Stock",
       "Valid",
       10_234d,
@@ -49,6 +50,7 @@ private class RestPositionDataLoader(sessionId : String, openApiService: OpenApi
     ),
     Position(
       "US0970231058 ",
+      accountId,
       accountId,
       "Stock",
       "Valid",

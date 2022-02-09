@@ -34,10 +34,13 @@ class OpenApiService @Inject()(
   def defaultClient(callingContext : OpenApiCallingContext) : Future[CallResult[ResponseClient]] =
     getAndRead("port/v1/clients/me", Some(callingContext))(ResponseClient.reads)
 
-  def clients(callingContext : OpenApiCallingContext) : Future[CallResult[Seq[ResponseClient]]] = {
+  def clients(callingContext : OpenApiCallingContext) : Future[CallResult[List[ResponseClient]]] = {
     defaultClient(callingContext).flatMap {
       case Left(err) => Future{ Left(err)  }
-      case Right(client) => getAndRead("port/v1/clients", Some(callingContext), List("OwnerKey" -> client.clientKey))
+      case Right(client) => {
+        logger.info(s"Got the default client: ${client.clientKey}")
+        getAndRead("port/v1/clients", Some(callingContext), List("OwnerKey" -> client.clientKey))
+      }
     }
   }
 

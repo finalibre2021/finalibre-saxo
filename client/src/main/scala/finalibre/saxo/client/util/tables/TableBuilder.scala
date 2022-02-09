@@ -5,7 +5,7 @@ import org.querki.jquery.{$, EventHandler, JQuery, JQueryEventObject}
 trait TableBuilder[A] {
   val id : String
   val columns : Seq[Column[A,_]]
-  def buildTable(items : Seq[A]) : JQuery
+  def buildTable(items : Seq[A], tableId : Option[String] = None) : JQuery
 }
 
 
@@ -17,10 +17,10 @@ object TableBuilder {
       override val id: String = inId
       override val columns: Seq[Column[A, _]] = inColumns
 
-      override def buildTable(items: Seq[A]): JQuery = {
+      override def buildTable(items: Seq[A], tableId : Option[String] = None): JQuery = {
         val header = createHeader
         val body = createBody(items)
-        val table = $(s"<table id='$inId' class='$inTableClass'>").append(
+        val table = $(s"<table id='${tableId.getOrElse(id)}' class='$inTableClass'>").append(
           header,
           body
         )

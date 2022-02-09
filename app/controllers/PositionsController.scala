@@ -5,8 +5,9 @@ import akka.stream.Materializer
 import finalibre.saxo.client.positions.messages.{ToClientMessage, ToServerMessage}
 import finalibre.saxo.client.positions.model.{ClientDto, PositionDto}
 import finalibre.saxo.positions.RestPositionDataLoader
+import finalibre.saxo.positions.mappers.ClientMappers.ClientMapper
 import finalibre.saxo.positions.mappers.PositionMappers.PositionMapper
-import finalibre.saxo.rest.outgoing.OpenApiService
+import finalibre.saxo.rest.outgoing.{OpenApiCallingContext, OpenApiService}
 import finalibre.saxo.security.{Encryptor, SessionRepository}
 import finalibre.saxo.util.Pingable
 import org.slf4j.LoggerFactory
@@ -37,13 +38,15 @@ class PositionsController @Inject()(
     }
   }
 
-  class PositionsWSActor(out : ActorRef, sessionId : String) extends Actor with Pingable {
+  def socket = wsFrom((out, cont) => new PositionsWSActor(out, cont.sessionId) )
+
+
+  class PositionsWSActor(out : ActorRef, sessionId : String) extends FinaLibreWSActor(out, sessionId) {
     val positionsDataLoader = RestPositionDataLoader(sessionId)
 
     def send(message : ToClientMessage) : Unit = {
       val asJson = Json.toJson(message)
-      val asString = Json.stringify(asJson)
-      out ! asString
+      out ! asJson
     }
 
     override def receive: Receive = {
@@ -51,12 +54,35 @@ class PositionsController @Inject()(
         case _ => {
           val parsed = Json.parse(message.toString).as[ToServerMessage]
           parsed.messageType match {
-            case ToServerMessage.SelectClientMessageType => parsed.clientKey.foreach {
-              case clientKey => positionsDataLoader.loadPositions(clientKey).foreach {
-                case res => res match {
-                  case Left(err) => logger.error(s"Failed to load positions data. Error: $err")
-                  case Right(poss) => send(ToClientMessage(positions = poss.map(_.toDto)))
+            case ToServerMessage.RequestInitialDataMessageType => {
+              positionsDataLoader.loadClients().foreach {
+                case Left(err) => {
+                  logger.error(s"Error when loading clients: $err")
                 }
+                case Right(clients) => {
+                  send(ToClientMessage(clients = Some(clients.map(_.toDto))))
+                }
+              }
+            }
+            case ToServerMessage.SelectClientsMessageType => parsed.clientKeys.foreach {
+              case clientKeys => {
+                val futures = clientKeys.map(cli => positionsDataLoader.loadPositions(cli))
+                val res = futures.foldLeft(Future {None.asInstanceOf[Option[Seq[PositionDto]]] }) {
+                  case (current, next) => next.flatMap {
+                    case Left(err) => {
+                      logger.error(s"Failed to load positions data. Error: $err")
+                      current
+                    }
+                    case Right(poss) => {
+                      current.map(curr => Some((curr.getOrElse(Nil) ++ poss.map(_.toDto)).toList))
+                    }
+                  }
+                }
+                for(
+                  futureRes <- res;
+                  poss <- futureRes
+                ) send(ToClientMessage(positions = Some(poss)))
+
               }
             }
           }

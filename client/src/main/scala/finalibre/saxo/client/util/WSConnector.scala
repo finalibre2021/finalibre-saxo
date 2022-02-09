@@ -52,7 +52,11 @@ trait WSConnector {
 
   lazy val location = {
     val protocol = if(dom.document.location.protocol.toLowerCase().startsWith("https")) "wss" else "ws"
-    s"$protocol://${dom.document.location.host}${dom.document.location.pathname}/ws"
+    val pathName = dom.document.location.pathname
+    val path = if(pathName.toLowerCase().endsWith("index"))
+      pathName.substring(0, pathName.length - "index".length) + "ws"
+    else pathName + "/ws"
+    s"$protocol://${dom.document.location.host}${path}"
   }
 
   def connectToServer : Unit = {

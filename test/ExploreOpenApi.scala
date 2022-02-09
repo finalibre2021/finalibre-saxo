@@ -1,6 +1,6 @@
 import akka.actor.ActorSystem
 import akka.stream.Materializer
-import finalibre.saxo.rest.outgoing.OpenApiService
+import finalibre.saxo.rest.outgoing.{OpenApiCallingContext, OpenApiService}
 import finalibre.saxo.security.db.postgres.{PostgresSessionRepository, Tables}
 import play.api.libs.ws.ahc.AhcWSClient
 
@@ -21,40 +21,30 @@ object ExploreOpenApi {
     implicit val executionContext: ExecutionContext = system.dispatcher
     implicit val dt = 1.minute
     implicit val client = AhcWSClient()
-    val openApiClient = new OpenApiService(client, executionContext)
+    implicit val openApiClient = new OpenApiService(client, executionContext)
+    implicit val sessionRepository = new PostgresSessionRepository(executionContext)
 
     val repo = new PostgresSessionRepository(executionContext)
     val db = repo.db
     val now = new Timestamp(System.currentTimeMillis())
-    //refreshToken(openApiClient, db, repo)
-    /*val latestValidToken = Await.result(
+    val (sessionId, accessTokenOpt) = Await.result(
       db.run(Tables.processes
         .filter(proc => proc.saxoAccessToken.isDefined && proc.saxoAccessToken.isDefined && proc.validUntil > now)
         .result
       ), 1.minute
     ).sortBy(p => -p.refreshValidUntil.get.getTime)
       .headOption
-      .flatMap(_.saxoAccessToken)
+      .map(proc => (proc.sessionId, proc.saxoAccessToken))
+      .head
 
-    println(latestValidToken)*/
-    val latestValidToken = Some(Util.tempKey)
-
-
-    latestValidToken.foreach {
-      case token => {
-        println(s"Got token: $token")
-        openApiClient.positions(None, ClientKey, ClientKey)(token).foreach {
-          case resp => resp match {
-            case Right(res) => {
-              println("Got response")
-              res.foreach(acc => println(acc))
-            }
-            case Left(err) => println(s"Error: $err")
-          }
-
-        }
+    implicit val contx = OpenApiCallingContext(sessionId, accessTokenOpt.get)
+    OpenApiCallingContext.call((api, cntx) => api.clients(contx)).foreach {
+      case res => {
+        println(s"Result: $res")
       }
     }
+
+
     Await.result(system.terminate(), 10.seconds)
 
 

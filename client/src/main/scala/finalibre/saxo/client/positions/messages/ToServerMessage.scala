@@ -2,9 +2,10 @@ package finalibre.saxo.client.positions.messages
 
 case class ToServerMessage(
                           messageType : String,
-                          clientKey : Option[String]
+                          clientKeys : Option[Seq[String]] = None
                           )
 
 object ToServerMessage {
-  val SelectClientMessageType = "SelectClient"
+  val RequestInitialDataMessageType = "InitialData"
+  val SelectClientsMessageType = "SelectClients"
 }

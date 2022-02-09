@@ -1,7 +1,5 @@
 @(title : String, caller : String, headerAddOn : Html = Html(""))(content : Html)
 
-@import _root_.finalibre.saxo.client.positions.Positions
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -25,5 +23,9 @@
        </div>
       </div>
     </nav>
+    <main>
+       @content
+    </main>
+
     <div id="main-modal-holder"/>
 </body>
