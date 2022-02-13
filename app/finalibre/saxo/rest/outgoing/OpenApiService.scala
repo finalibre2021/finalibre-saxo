@@ -64,6 +64,10 @@ class OpenApiService @Inject()(
       baseUrl = authorizationBaseUrl,
       useBasicAuthentication = true)(ResponseAuthorizationToken.reads)
 
+  def apiDescription(area : String, callingContext : OpenApiCallingContext) : Future[CallResult[WSResponse]] = {
+    perform(resp => resp.get)(s"openapi.yaml", Some(callingContext), Nil, "https://gateway.saxobank.com/sim", true)(resp => resp)
+  }
+
   private[outgoing] def refreshToken(refreshToken : String) : Future[CallResult[ResponseAuthorizationToken]] =
     postQueryStringWithRead("token",None, List(
       "grant_type" -> "refresh_token",
@@ -80,13 +84,9 @@ class OpenApiService @Inject()(
     case stat => Left(OtherHttpStatusError(stat, resp.statusText))
   }
 
-  private def asJson(resp : WSResponse) = Try {
-    Json.parse(resp.body)
-  }
-
 
   private def get[A](endpoint : String, context : Option[OpenApiCallingContext], urlArguments : List[(String, String)]= Nil, baseUrl : String = openApiBaseUrl)(func : JsValue => A) : Future[CallResult[A]] =
-    perform(req => req.get())(endpoint,context, urlArguments, baseUrl, false)(func)
+    performJsonOperation(req => req.get())(endpoint,context, urlArguments, baseUrl, false)(func)
 
   private def getAndRead[A](endpoint : String, context : Option[OpenApiCallingContext], urlArguments : List[(String, String)]= Nil, baseUrl : String = openApiBaseUrl)(implicit reads : Reads[A]) : Future[CallResult[A]] =
     performAndRead(req => req.get())(endpoint,context, urlArguments, baseUrl)(reads)
@@ -104,9 +104,17 @@ class OpenApiService @Inject()(
 
 
   private def performAndRead[A](verb : WSRequest => Future[WSResponse])(endpoint : String, context : Option[OpenApiCallingContext], urlArguments : List[(String, String)] = Nil, baseUrl : String = openApiBaseUrl, useBasicAuthentication : Boolean = false)(implicit reads : Reads[A]) : Future[CallResult[A]] =
-    perform(verb)(endpoint, context, urlArguments, baseUrl,useBasicAuthentication)((js : JsValue) => js.as[A])
+    performJsonOperation(verb)(endpoint, context, urlArguments, baseUrl,useBasicAuthentication)((js : JsValue) => js.as[A])
 
-  private def perform[A](verb : WSRequest => Future[WSResponse])(endpoint : String, context : Option[OpenApiCallingContext], urlArguments : List[(String, String)], baseUrl : String, useBasicAuthentication : Boolean)(func : JsValue => A) : Future[CallResult[A]] = {
+  private def performJsonOperation[A](verb : WSRequest => Future[WSResponse])(endpoint : String, context : Option[OpenApiCallingContext], urlArguments : List[(String, String)], baseUrl : String, useBasicAuthentication : Boolean)(func : JsValue => A) : Future[CallResult[A]] =
+    perform(verb)(endpoint, context, urlArguments, baseUrl, useBasicAuthentication)(
+      resp => {
+        val asJson = Json.parse(resp.body)
+        func(asJson)
+      }
+    )
+
+  private def perform[A](verb : WSRequest => Future[WSResponse])(endpoint : String, context : Option[OpenApiCallingContext], urlArguments : List[(String, String)], baseUrl : String, useBasicAuthentication : Boolean)(func : WSResponse => A) : Future[CallResult[A]] = {
     Try {
       val url = if(baseUrl.endsWith("/")) s"$baseUrl$endpoint" else s"$baseUrl/$endpoint"
       logger.info(s"Accessing URL: $url, with URL parameters: ${urlArguments.map(p => p._1 + "=" + p._2)}")
@@ -114,35 +122,30 @@ class OpenApiService @Inject()(
         .url(url)
         .withQueryStringParameters(urlArguments : _ *)
       context.foreach {
-        case ctx => req = req.withHttpHeaders(OpenApiService.AuthorizationHeaderName -> s"BEARER ${ctx.token}")
+        case ctx => req = req.withHttpHeaders(OpenApiService.tokenAuthPair(ctx.token))
       }
       if(useBasicAuthentication)
         req = req.withAuth(clientId, clientSecret, WSAuthScheme.BASIC)
 
       verb(req).map(res => filterSuccess(res) match {
-          case Right(resp) => {
-            val toRet = (for (
-              js <- asJson(resp);
-              res <- Try {
-                func(js)
-              }
-            ) yield res)
-            toRet
+        case Right(resp) =>
+          Try {
+            logger.info(s"Going to call map function for response: ${resp.toString}")
+            val funcRes = func(resp)
+            funcRes
           }
           match {
             case Success(v) => Right(v)
             case Failure(err) => Left(ExceptionError(err))
           }
+        case left @ Left(err) => Left(err)
+      })
 
-          case left @ Left(err) => Left(err)
-        })
-
-      }
-    } match {
+    }
+  } match {
     case Failure(err) => Future { Left(ExceptionError(err))}
     case Success(fut) => fut
   }
-
 
 
 
@@ -162,6 +165,8 @@ object OpenApiService {
     Redirect(url)
       .withHeaders("Content-Type" -> "application/x-www-form-urlencoded")
   }
+
+  private def tokenAuthPair(token : String) : (String, String) =  OpenApiService.AuthorizationHeaderName -> s"BEARER ${token}"
 
   private def buildParameterString(map : List[(String, String)], encode : Boolean) = map
     .map(p => p._1 + "=" + (if(encode) enc(p._2) else p._2))

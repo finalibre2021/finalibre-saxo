@@ -13,6 +13,7 @@ abstract class Column[A, B] {
   val id : String
   val name : String
   val isButton : Boolean = false
+  val isRightAligned : Boolean = false
   def value(a : A) : Option[B]
   def onClick(a : A) : Option[EventHandler]
   def imageUrl(a : A) : Option[String] = None
@@ -36,22 +37,25 @@ object Column {
 
 
   object StringColumn {
-    def apply[A](inId : String, inName : String, inValue : A => Option[String], inOnClick : Option[EventHandler] = None) = {
+    def apply[A](inId : String, inName : String, inValue : A => Option[String], inOnClick : Option[EventHandler] = None, inRightAligned : Boolean = false) = {
       new StringColumn[A] {
         override val id = inId
         override val name = inName
+        override val isRightAligned: Boolean = inRightAligned
         override def value(a: A): Option[String] = inValue(a)
         override def onClick(a : A) : Option[EventHandler] = inOnClick
+
       }
     }
   }
 
   object LongColumn {
-    def apply[A](inId : String, inName : String, inValue : A => Option[Long], inOnClick : Option[EventHandler] = None) = {
+    def apply[A](inId : String, inName : String, inValue : A => Option[Long], inOnClick : Option[EventHandler] = None, inRightAligned : Boolean = true) = {
       new LongColumn[A] {
         override val id = inId
         override val name = inName
-        override def value(a: A): Option[Long] = inValue(a)
+        override val isRightAligned: Boolean = inRightAligned
+       override def value(a: A): Option[Long] = inValue(a)
         override def onClick(a : A) : Option[EventHandler] = inOnClick
       }
     }
@@ -59,10 +63,11 @@ object Column {
 
 
   object DoubleColumn {
-    def apply[A](inId : String, inName : String, inValue : A => Option[Double], inOnClick : Option[EventHandler] = None) = {
+    def apply[A](inId : String, inName : String, inValue : A => Option[Double], inOnClick : Option[EventHandler] = None, inRightAligned : Boolean = true) = {
       new DoubleColumn[A] {
         override val id = inId
         override val name = inName
+        override val isRightAligned: Boolean = inRightAligned
         override def value(a: A): Option[Double] = inValue(a)
         override def onClick(a : A) : Option[EventHandler] = inOnClick
       }
@@ -70,10 +75,11 @@ object Column {
   }
 
   object DateColumn {
-    def apply[A](inId : String, inName : String, inValue : A => Option[Date], inOnClick : Option[EventHandler] = None) = {
+    def apply[A](inId : String, inName : String, inValue : A => Option[Date], inOnClick : Option[EventHandler] = None, inRightAligned : Boolean = true) = {
       new DateColumn[A] {
         override val id = inId
         override val name = inName
+        override val isRightAligned: Boolean = inRightAligned
         override def value(a: A): Option[Date] = inValue(a)
         override def onClick(a : A) : Option[EventHandler] = inOnClick
       }
@@ -81,10 +87,11 @@ object Column {
   }
 
   object DateTimeColumn {
-    def apply[A](inId : String, inName : String, inValue : A => Option[LocalDateTime], inOnClick : Option[EventHandler] = None) = {
+    def apply[A](inId : String, inName : String, inValue : A => Option[LocalDateTime], inOnClick : Option[EventHandler] = None, inRightAligned : Boolean = true) = {
       new DateTimeColumn[A] {
         override val id = inId
         override val name = inName
+        override val isRightAligned: Boolean = inRightAligned
         override def value(a: A): Option[LocalDateTime] = inValue(a)
         override def onClick(a : A) : Option[EventHandler] = inOnClick
       }

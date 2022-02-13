@@ -45,15 +45,12 @@ object PositionsClient {
       profitLossInBaseCol, tradeCostCol, tradeCostInBaseCol)
 
     val tableBuilder = TableBuilder[PositionDto]("positions-table", columns)
-
-
   }
-
-
 
 
   @JSExport
   def main() : Unit = {
+    println("Starting up the connection to server")
     PositionsConnector.connectToServer
   }
 
@@ -67,7 +64,8 @@ object PositionsClient {
         if(checkedClients.contains(cli.clientKey))
           $(el).attr("checked", "checked")
         $(el).change(() => {
-          if($(el).attr("checked") != null)
+          val checked =$(el).prop("checked")
+          if(checked != null && checked != false)
             checkedClients.add(cli.clientKey)
           else checkedClients.remove(cli.clientKey)
           setClientsEnabled(false)
@@ -97,14 +95,15 @@ object PositionsClient {
       .foreach {
         case (_,clientName, clientId, poss) => {
           val row = $("<div class='row mt-2'>")
-          $(row).append(
-            $("<div class='shadow p-3 mb-5 bg-body rounded'>").text(clientName)
-          )
           val sortedPos = poss.sortBy(pos => (pos.assetType, pos.exposureCurrency, - pos.exposure))
           val table = PositionsTables.tableBuilder.buildTable(sortedPos, Some(s"positions-table-${clientId.replaceAll(" ", "")}"))
-          $(row).append(
-            table
-          )
+          val tableCard = $("<div class='card'>")
+            .append(
+              $("<h3 class='card-header'>").text(clientName),
+              $("<div class='card-body'>")
+                .append(table)
+            )
+          $(row).append(tableCard)
           $(PositionsInsertDivId).append(row)
         }
       }
@@ -119,10 +118,7 @@ object PositionsClient {
         .filter(cli => $(cli).attr("disabled") == null)
         .foreach(cli => $(cli).attr("disabled", "disabled"))
     }
-
   }
-
-
 
 
   object PositionsConnector extends WSConnector {

@@ -27,7 +27,7 @@ object ExploreOpenApi {
     val repo = new PostgresSessionRepository(executionContext)
     val db = repo.db
     val now = new Timestamp(System.currentTimeMillis())
-    val (sessionId, accessTokenOpt) = Await.result(
+    val (sessionId, accessTokenOpt) = ("1234", Some(loadTempToken)) /*Await.result(
       db.run(Tables.processes
         .filter(proc => proc.saxoAccessToken.isDefined && proc.saxoAccessToken.isDefined && proc.validUntil > now)
         .result
@@ -35,12 +35,13 @@ object ExploreOpenApi {
     ).sortBy(p => -p.refreshValidUntil.get.getTime)
       .headOption
       .map(proc => (proc.sessionId, proc.saxoAccessToken))
-      .head
+      .head*/
 
     implicit val contx = OpenApiCallingContext(sessionId, accessTokenOpt.get)
-    OpenApiCallingContext.call((api, cntx) => api.clients(contx)).foreach {
-      case res => {
-        println(s"Result: $res")
+    OpenApiCallingContext.call((api, cntx) => api.apiDescription("port", cntx)).foreach {
+      case Left(err) => println(err.errorString)
+      case Right(resp) => {
+        println(resp.body)
       }
     }
 
@@ -50,35 +51,13 @@ object ExploreOpenApi {
 
   }
 
-
-  def refreshToken(openApiService: OpenApiService, db: Database, repo: PostgresSessionRepository)(implicit executionContext: ExecutionContext): Unit = {
-    val now = new Timestamp(System.currentTimeMillis())
-    val latestValidTokenWithRefresh = Await.result(
-      db.run(Tables.processes
-        .filter(proc => proc.saxoAccessToken.isDefined && proc.saxoRefreshToken.isDefined && proc.refreshValidUntil > now)
-        .result
-      ), 1.minute
-    ).sortBy(p => -p.refreshValidUntil.get.getTime).headOption
-
-    latestValidTokenWithRefresh.foreach {
-      proc => {
-        openApiService.refreshToken(proc.saxoRefreshToken.get).foreach {
-          case Left(err) => println(s"Error, error, error: $err")
-          case Right(resp) => {
-            proc.saxoAccessToken.foreach {
-              case curToken => {
-                repo.updateSaxoTokenDataByCurrentToken(proc.sessionId, curToken, resp.accessToken, resp.expiresAt, resp.refreshToken, resp.refreshExpiresAt)
-                println(s"Success: refresh token: ${proc.saxoRefreshToken.get}")
-                println(s"   exchanged for access token: ${resp.accessToken}")
-                println(s"   and refresh token: ${resp.refreshToken.getOrElse("")}")
-              }
-            }
-          }
-        }
-
-      }
-    }
+  def loadTempToken = {
+    val file = new File("""c:\git\finalibre-saxo\conf\temp-token.txt""")
+    println(s"Using file: ${file.getAbsolutePath}")
+    Source.fromFile(file).getLines().toList.head
   }
+
+
 }
 
 

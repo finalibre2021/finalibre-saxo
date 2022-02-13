@@ -1,10 +1,9 @@
 package finalibre.saxo.client.util
 
-import java.text.{DecimalFormat, NumberFormat}
-import java.util.{Locale, TimeZone}
+import java.text.DecimalFormat
 import java.time._
 import java.time.format._
-import java.time.temporal.{ChronoField, TemporalField}
+import java.util.Locale
 import scala.scalajs.js
 import scala.scalajs.js.Date
 import scala.util.Try
@@ -17,12 +16,11 @@ object JsExtensions {
       val rem = d % 1.0
       rem < 0.01 && rem > -0.01
     }
+
     def toPrettyString = {
-      if(isZero) {
-        formatPrettyInt.format(d) + ",00"
-      }
-      else formatPretty.format(d)
+       JsExtensions.DoubleExtensions.formatPretty.format(d)
     }
+
     def toInputString = {
       if(isZero) {
         inputFormatInt.format(d) + ".00"
@@ -70,7 +68,6 @@ object JsExtensions {
 
     def toDoubleFromInput = (Try{
       str.toDouble
-      //DoubleExtensions.inputFormat.parse(str).doubleValue()
     }).toOption
 
   }
@@ -90,24 +87,18 @@ object JsExtensions {
   }
 
   object DoubleExtensions {
-    val numberLocale = Locale.forLanguageTag("da-DK")
-    val formatPretty = NumberFormat.getInstance(numberLocale).asInstanceOf[DecimalFormat]
+    val locale = Locale.forLanguageTag("da-DK")
+    val formatPretty = new java.text.DecimalFormat()
     formatPretty.applyPattern("###,##0.00")
     formatPretty.getDecimalFormatSymbols.setDecimalSeparator(',')
     formatPretty.getDecimalFormatSymbols.setGroupingSeparator('.')
 
-    val formatPrettyInt = NumberFormat.getInstance(numberLocale).asInstanceOf[DecimalFormat]
-    formatPrettyInt.applyPattern("###,##0")
-    formatPrettyInt.getDecimalFormatSymbols.setDecimalSeparator(',')
-    formatPrettyInt.getDecimalFormatSymbols.setGroupingSeparator('.')
+    val formatPrettyInt = new DecimalFormat()
+    formatPrettyInt.applyPattern("0")
 
-
-    val inputNumberLocale = Locale.forLanguageTag("en-US")
-    val inputFormat = NumberFormat.getInstance(inputNumberLocale).asInstanceOf[DecimalFormat]
-    inputFormat.applyPattern("####0.00")
+    val inputFormat = new DecimalFormat("####0.00")
     inputFormat.getDecimalFormatSymbols.setDecimalSeparator('.')
-    val inputFormatInt = NumberFormat.getInstance(inputNumberLocale).asInstanceOf[DecimalFormat]
-    inputFormatInt.applyPattern("####0")
+    val inputFormatInt = new DecimalFormat("####0")
     inputFormatInt.getDecimalFormatSymbols.setDecimalSeparator('.')
 
   }

@@ -49,6 +49,7 @@ object TableBuilder {
             inColumns.foreach {
               case col => {
                 val td = $("<td>")
+                  .attr("align", if(col.isRightAligned) "right" else "left")
                 val classes = col.classes(item)
                 val doCreate = col.doCreate(item)
                 (col.isButton, col.imageUrl(item), col.dataString(item)) match {

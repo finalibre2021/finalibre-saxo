@@ -66,8 +66,9 @@ class PositionsController @Inject()(
             }
             case ToServerMessage.SelectClientsMessageType => parsed.clientKeys.foreach {
               case clientKeys => {
+                logger.debug(s"Received client keys: ${clientKeys.mkString(", ")}")
                 val futures = clientKeys.map(cli => positionsDataLoader.loadPositions(cli))
-                val res = futures.foldLeft(Future {None.asInstanceOf[Option[Seq[PositionDto]]] }) {
+                val res = futures.foldLeft(Future {Some(Seq.empty[PositionDto]) }) {
                   case (current, next) => next.flatMap {
                     case Left(err) => {
                       logger.error(s"Failed to load positions data. Error: $err")
