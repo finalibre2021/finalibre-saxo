@@ -34,22 +34,17 @@ lazy val root = (project in file("."))
   .dependsOn(client)
 
 
-val circeVersion = "0.14.1"
 
 lazy val client = (project in file("client"))
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= Seq(
       "org.scala-js" %%% "scalajs-dom" % "2.0.0",
-      "io.circe" %%% "circe-core" % circeVersion,
-      "io.circe" %%% "circe-generic" % circeVersion,
-      "io.circe" %%% "circe-parser" % circeVersion,
-      "io.circe" %% "circe-generic-extras" % circeVersion,
       "org.querki" %%% "querki-jsext" % "0.10",
       //"io.github.cquiroz" %%% "locales-minimal-en-db" % "1.1.1",
       "io.github.cquiroz" %%% "scala-java-time" % "2.2.0" ,
       "io.github.cquiroz" %%% "scala-java-locales" % "1.2.0"
-    ),
+    ) ,
     Compile / npmDependencies  ++= Seq(
       "webpack-merge" -> "5.8.0",
      // "style-loader" -> "3.3.1",
@@ -90,12 +85,18 @@ lazy val client = (project in file("client"))
   .enablePlugins(ScalaJSPlugin, ScalaJSWeb, ScalaJSBundlerPlugin, ScalablyTypedConverterPlugin)
 
 
+val circeVersion = "0.14.1"
+
 lazy val commonSettings = Seq(
   scalaVersion := "2.13.5",
   organization := "finalibre",
   version := "1.0-SNAPSHOT",
   libraryDependencies ++= Seq(
-    "commons-io" % "commons-io" % "2.8.0"
+    "commons-io" % "commons-io" % "2.8.0",
+    "io.circe" %%% "circe-core" % circeVersion,
+    "io.circe" %%% "circe-generic" % circeVersion,
+    "io.circe" %%% "circe-parser" % circeVersion,
+    "io.circe" %% "circe-generic-extras" % circeVersion
   )
 )
 

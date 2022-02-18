@@ -32,6 +32,11 @@ object SaxoConfig {
       lazy val authenticationBaseUrl = outConf.getString("authentication-base-url")
       lazy val clientId = outConf.getString("client-id")
       lazy val clientSecret = outConf.getString("client-secret")
+
+      object Streaming {
+        private lazy val streamConf = outConf.getConfig("streaming")
+        lazy val streamingBaseUrl = streamConf.getString("streaming-base-url")
+      }
     }
 
   }
