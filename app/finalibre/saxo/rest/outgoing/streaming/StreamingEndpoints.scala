@@ -31,12 +31,12 @@ object StreamingEndpoints {
     object Accounts {
       val SubGroup = "accounts"
       val Version = 1
-      val Accounts = StreamingEndpoint("PortfolioAccounts", Group, Version, SubGroup)
+      val Accounts = StreamingEndpoint[AccountTopic]("PortfolioAccounts", Group, Version, SubGroup)
     }
     object Balances {
       val SubGroup = "balances"
       val Version = 1
-      val Balances = StreamingEndpoint("PortfolioBalances", Group, Version, SubGroup)
+      val Balances = StreamingEndpoint[BalanceTopic]("PortfolioBalances", Group, Version, SubGroup)
     }
     object ClosedPositions {
       val SubGroup = "closedpositions"
