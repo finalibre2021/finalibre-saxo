@@ -41,22 +41,22 @@ object StreamingEndpoints {
     object ClosedPositions {
       val SubGroup = "closedpositions"
       val Version = 1
-      val ClosedPositions = StreamingEndpoint("PortfolioClosedPositions", Group, Version, SubGroup)
+      val ClosedPositions = StreamingEndpoint[ClosedPositionTopic]("PortfolioClosedPositions", Group, Version, SubGroup)
     }
     object Exposure {
       val SubGroup = "exposure"
       val Version = 1
-      val Instruments = StreamingEndpoint("PortfolioExposureInstruments", s"$Group/instruments", Version, SubGroup)
+      val Instruments = StreamingEndpoint[ExposureTopic]("PortfolioExposureInstruments", s"$Group/instruments", Version, SubGroup)
     }
     object NetPositions {
       val SubGroup = "netpositions"
       val Version = 1
-      val NetPositions = StreamingEndpoint("PortfolioNetPositions", Group, Version, SubGroup)
+      val NetPositions = StreamingEndpoint[NetPositionTopic]("PortfolioNetPositions", Group, Version, SubGroup)
     }
     object Orders {
       val SubGroup = "orders"
       val Version = 1
-      val Orders = StreamingEndpoint("PortfolioOrders", Group, Version, SubGroup)
+      val Orders = StreamingEndpoint[OrderTopic]("PortfolioOrders", Group, Version, SubGroup)
     }
     object Positions {
       val SubGroup = "positions"

@@ -12,19 +12,27 @@ case class ChartTopic(
 case class ChartInfo(
                     delayedByMinutes : Int,
                     exchangeId : String,
-                    firstSampleTime : LocalDateTime
+                    firstSampleTime : LocalDateTime,
+                    horizon : Option[Int]
                     )
 
 case class DataEntry(
+                    close : Option[Double],
                     closeAsk : Double,
                     closeBid : Double,
+                    growth : Option[Double],
+                    high : Option[Double],
                     highAsk : Double,
                     highBid : Double,
+                    interest : Option[Double],
+                    low : Option[Double],
                     lowAsk : Double,
                     lowBid : Double,
+                    open : Option[Double],
                     openAsk : Double,
                     openBid : Double,
-                    time : LocalDateTime
+                    time : LocalDateTime,
+                    volume : Option[Double]
 )
 
 case class DisplayAndFormat(
