@@ -1,12 +1,12 @@
 package finalibre.saxo.rest.outgoing
 
-import controllers.AuthenticationCallbackController
 import finalibre.saxo.configuration.SaxoConfig
 import finalibre.saxo.rest.outgoing.OpenApiService._
 import finalibre.saxo.rest.outgoing.responses.{ResponseAccount, ResponseAuthorizationToken, ResponseClient, ResponsePosition}
-import finalibre.saxo.security.SessionRepository
+import finalibre.saxo.rest.outgoing.streaming.StreamingEndpoints.StreamingEndpoint
+import finalibre.saxo.rest.outgoing.streaming.StreamingSubscription
+import finalibre.saxo.rest.outgoing.streaming.topics.StreamingTopic
 import org.slf4j.LoggerFactory
-import play.api.libs.json.JsonNaming.PascalCase
 import responses.ServiceResult._
 import play.api.libs.json.{JsObject, JsValue, Json, JsonConfiguration, Reads}
 import play.api.libs.ws.{BodyWritable, WSAuthScheme, WSClient, WSRequest, WSResponse}
@@ -14,7 +14,6 @@ import play.api.mvc.Results.Redirect
 import play.api.mvc.{AnyContent, Request, Result}
 
 import java.net.URLEncoder
-import java.util.Base64
 import javax.inject._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
@@ -68,6 +67,16 @@ class OpenApiService @Inject()(
     perform(resp => resp.get)(s"openapi.yaml", Some(callingContext), Nil, "https://gateway.saxobank.com/sim", true)(resp => resp)
   }
 
+  private def createSubscription[Topic <: StreamingTopic](endpoint : StreamingEndpoint[Topic], body : Product) : Future[CallResult[StreamingSubscription[Topic]]] = {
+    import io.circe.syntax._
+    import io.circe.generic.auto._
+    val json = body.asJson
+    val bodyFunc = ((req : WSRequest) => req.withBody(json.spaces2))
+    val performResult = perform(req => req.post(json.spaces2))(endpoint.)
+
+  }
+
+
   private[outgoing] def refreshToken(refreshToken : String) : Future[CallResult[ResponseAuthorizationToken]] =
     postQueryStringWithRead("token",None, List(
       "grant_type" -> "refresh_token",
@@ -114,7 +123,7 @@ class OpenApiService @Inject()(
       }
     )
 
-  private def perform[A](verb : WSRequest => Future[WSResponse])(endpoint : String, context : Option[OpenApiCallingContext], urlArguments : List[(String, String)], baseUrl : String, useBasicAuthentication : Boolean)(func : WSResponse => A) : Future[CallResult[A]] = {
+  private def perform[A](verb : WSRequest => Future[WSResponse])(endpoint : String, context : Option[OpenApiCallingContext], urlArguments : List[(String, String)], baseUrl : String, useBasicAuthentication : Boolean, extraFunc : Option[WSRequest => WSRequest] = None)(func : WSResponse => A) : Future[CallResult[A]] = {
     Try {
       val url = if(baseUrl.endsWith("/")) s"$baseUrl$endpoint" else s"$baseUrl/$endpoint"
       logger.info(s"Accessing URL: $url, with URL parameters: ${urlArguments.map(p => p._1 + "=" + p._2)}")
@@ -126,6 +135,10 @@ class OpenApiService @Inject()(
       }
       if(useBasicAuthentication)
         req = req.withAuth(clientId, clientSecret, WSAuthScheme.BASIC)
+
+      extraFunc.foreach {
+        case func => req = func(req)
+      }
 
       verb(req).map(res => filterSuccess(res) match {
         case Right(resp) =>

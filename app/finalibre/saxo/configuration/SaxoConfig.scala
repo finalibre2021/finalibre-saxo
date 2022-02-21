@@ -36,6 +36,10 @@ object SaxoConfig {
       object Streaming {
         private lazy val streamConf = outConf.getConfig("streaming")
         lazy val streamingBaseUrl = streamConf.getString("streaming-base-url")
+        lazy val subscriptionsPerConnection =
+          if (streamConf.hasPath("subscriptions-per-connection"))
+            streamConf.getInt("subscriptions-per-connection")
+          else 20
       }
     }
 

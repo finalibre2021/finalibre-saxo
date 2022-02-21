@@ -10,11 +10,14 @@ import akka.http.scaladsl.model.headers.GenericHttpCredentials
 import akka.http.scaladsl.model.ws.{Message, WebSocketRequest, WebSocketUpgradeResponse}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import finalibre.saxo.configuration.SaxoConfig
+import finalibre.saxo.rest.outgoing.streaming.StreamingConnection.connections
+import finalibre.saxo.rest.outgoing.streaming.StreamingEndpoints.StreamingEndpoint
 import finalibre.saxo.rest.outgoing.streaming.topics.StreamingTopic
 import io.circe._
 import io.circe.parser._
 import org.slf4j.LoggerFactory
 
+import java.util.UUID
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.{Future, Promise}
@@ -54,6 +57,7 @@ class StreamingConnection private[StreamingConnection](
     }
     StreamingConnection.unRegister(contextId)
   }
+
 
   private def handleBytes(bytes : Array[Byte]) : Unit = currentBytes.synchronized {
     currentBytes.appendAll(bytes)
@@ -108,8 +112,6 @@ class StreamingConnection private[StreamingConnection](
       }
     }
 
-  private def source()  =  Source.never
-
   private[streaming] def registerSubscription[A <: StreamingTopic](sub : StreamingSubscription[A]) : Unit = {
     activeSubscriptions.synchronized {
       activeSubscriptions(sub.referenceId) = sub
@@ -119,6 +121,27 @@ class StreamingConnection private[StreamingConnection](
   private[streaming] def unRegisterSubscription(referenceId : String) : Unit = {
     activeSubscriptions.synchronized {
       activeSubscriptions.remove(referenceId)
+      if(activeSubscriptions.isEmpty)
+        shutdownConnection()
+    }
+  }
+
+  def createSubscriptionFor[T <: StreamingTopic](endpoint : StreamingEndpoint[T], observer : StreamingObserver[T], initialState : Json)(implicit decoder : Decoder[T]): StreamingSubscription[T] = {
+    connections
+      .values
+      .flatMap(_.activeSubscriptions)
+      .find(_._1 == endpoint.referenceId)
+      .map(_._2) match {
+      case Some(sub) => {
+        val casted = sub.asInstanceOf[StreamingSubscription[T]]
+        casted.registerObserver(observer)
+        casted
+      }
+      case _ => {
+        val sub = StreamingSubscription(endpoint.referenceId, initialState, observer, this)
+        registerSubscription(sub)
+        sub
+      }
     }
   }
 
@@ -148,9 +171,24 @@ object StreamingConnection {
   private[StreamingConnection] def register(connection : StreamingConnection) = connections.synchronized {
     connections(connection.contextId) = connection
   }
-
   private[StreamingConnection] def unRegister(contextId : String) : Unit = connections.synchronized {
     connections.remove(contextId)
+  }
+
+  private [StreamingConnection] def getConnection(initialToken : String)(implicit actorSystem: ActorSystem) : StreamingConnection = connections.synchronized {
+    (connections
+      .values
+      .find(conn => conn.activeSubscriptions.size < SaxoConfig.Rest.Outgoing.Streaming.subscriptionsPerConnection)) match {
+      case Some(conn) => conn
+      case None => {
+        var contextId = UUID.randomUUID().toString
+        while(connections.contains(contextId))
+          contextId = UUID.randomUUID().toString
+        val conn = new StreamingConnection(initialToken, contextId)
+        connections(contextId) = conn
+        conn
+      }
+    }
   }
 
 }
