@@ -19,6 +19,7 @@ trait StreamingObserver[T <: StreamingTopic] {
   }
 
   def onUpdate(message : T) : Unit
+  def onSequenceUpdate(messageSeq : Seq[T]) : Unit
 
   private[streaming] def registerSubscription(sub : StreamingSubscription[T]) : Unit = {
     subscription = Some(sub)

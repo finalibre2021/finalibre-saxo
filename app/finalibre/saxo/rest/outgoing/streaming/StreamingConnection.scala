@@ -10,6 +10,8 @@ import akka.http.scaladsl.model.headers.GenericHttpCredentials
 import akka.http.scaladsl.model.ws.{Message, WebSocketRequest, WebSocketUpgradeResponse}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import finalibre.saxo.configuration.SaxoConfig
+import finalibre.saxo.rest.outgoing.responses.ServiceResult.CallResult
+import finalibre.saxo.rest.outgoing.{OpenApiCallingContext, OpenApiService}
 import finalibre.saxo.rest.outgoing.streaming.StreamingConnection.connections
 import finalibre.saxo.rest.outgoing.streaming.StreamingEndpoints.StreamingEndpoint
 import finalibre.saxo.rest.outgoing.streaming.topics.StreamingTopic
@@ -46,7 +48,6 @@ class StreamingConnection private[StreamingConnection](
 
 
   private[streaming] def openConnection() = {
-    StreamingConnection.register(this)
     val endProm = createAkkaHttpWebSocketClientFlow()
     closePromise = Some(endProm)
   }
@@ -121,12 +122,14 @@ class StreamingConnection private[StreamingConnection](
   private[streaming] def unRegisterSubscription(referenceId : String) : Unit = {
     activeSubscriptions.synchronized {
       activeSubscriptions.remove(referenceId)
-      if(activeSubscriptions.isEmpty)
+      if(activeSubscriptions.isEmpty) {
         shutdownConnection()
+      }
     }
   }
 
-  def createSubscriptionFor[T <: StreamingTopic](endpoint : StreamingEndpoint[T], observer : StreamingObserver[T], initialState : Json)(implicit decoder : Decoder[T]): StreamingSubscription[T] = {
+  private[streaming] def createSubscriptionFor[T <: StreamingTopic](endpoint : StreamingEndpoint[T], observer : StreamingObserver[T], initialState : Json): StreamingSubscription[T] = {
+
     connections
       .values
       .flatMap(_.activeSubscriptions)
@@ -168,9 +171,6 @@ class StreamingConnection private[StreamingConnection](
 
 object StreamingConnection {
   private val connections = mutable.HashMap.empty[String, StreamingConnection]
-  private[StreamingConnection] def register(connection : StreamingConnection) = connections.synchronized {
-    connections(connection.contextId) = connection
-  }
   private[StreamingConnection] def unRegister(contextId : String) : Unit = connections.synchronized {
     connections.remove(contextId)
   }
@@ -186,9 +186,25 @@ object StreamingConnection {
           contextId = UUID.randomUUID().toString
         val conn = new StreamingConnection(initialToken, contextId)
         connections(contextId) = conn
+        conn.openConnection()
         conn
       }
     }
+  }
+
+  def createSubscriptionFor[T <: StreamingTopic](endpoint : StreamingEndpoint[T], observer : StreamingObserver[T])(implicit context : OpenApiCallingContext, openApiService : OpenApiService, actorSystem : ActorSystem) : Future[CallResult[StreamingSubscription[T]]] = {
+    val connection = getConnection(context.token)
+    implicit val execContext = actorSystem.dispatcher
+    import io.circe.syntax._
+    import io.circe.generic.auto._
+    openApiService.registerSubscription(endpoint).map {
+      case Left(e) => Left(e)
+      case Right(res : MultiEntrySubscriptionResponse[T]) => {
+        val subscription = connection.createSubscriptionFor(endpoint, observer, res.snapshot.asJson)
+        Right(subscription)
+      }
+    }
+    //
   }
 
 }

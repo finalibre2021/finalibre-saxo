@@ -18,6 +18,10 @@ object ServiceResult {
   case class OtherError(str : String) extends ServiceError {
     override def errorString = str
   }
+  case class JsonConversionError[A](jsonString : String) extends ServiceError {
+    import scala.reflect._
+    override def errorString: String = s"Failed to convert following json string to: ${classTag[A].runtimeClass.toString} - json string: ${jsonString}"
+  }
 
 
 }

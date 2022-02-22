@@ -120,8 +120,16 @@ object StreamingEndpoints {
     lazy val endpointId = nextId
     lazy val referenceId = referenceIdFrom(endpointId, name)
 
-    def subscriptionUrl(contextId : String) : String =
-      manualUrl.getOrElse(s"${SaxoConfig.Rest.Outgoing.openApiBaseUrl}/$group/v$version/$subGroup/subscriptions/$contextId/$referenceId")
+    def subscriptionUrl : String =
+      manualUrl.getOrElse(s"${SaxoConfig.Rest.Outgoing.openApiBaseUrl}/$group/v$version/$subGroup/subscriptions")
+
+    import io.circe.generic.auto._, io.circe.syntax._
+
+    def postBodyFor(contextId : String) : String = Map(
+      "ContextId" -> contextId,
+      "ReferenceId" -> referenceId,
+      "Format" -> "application/json"
+    ).asJson.spaces2
   }
 
   private def referenceIdFrom(id : Long, name : String) =

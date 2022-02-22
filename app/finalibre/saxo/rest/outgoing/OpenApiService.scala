@@ -1,11 +1,12 @@
 package finalibre.saxo.rest.outgoing
 
+import akka.actor.ActorSystem
 import finalibre.saxo.configuration.SaxoConfig
 import finalibre.saxo.rest.outgoing.OpenApiService._
 import finalibre.saxo.rest.outgoing.responses.{ResponseAccount, ResponseAuthorizationToken, ResponseClient, ResponsePosition}
-import finalibre.saxo.rest.outgoing.streaming.StreamingEndpoints.StreamingEndpoint
-import finalibre.saxo.rest.outgoing.streaming.StreamingSubscription
-import finalibre.saxo.rest.outgoing.streaming.topics.StreamingTopic
+import finalibre.saxo.rest.outgoing.streaming.StreamingEndpoints.{AutoTrading, StreamingEndpoint}
+import finalibre.saxo.rest.outgoing.streaming.{MultiEntrySubscriptionResponse, SingleEntrySubscriptionResponse, StreamingObserver, StreamingSubscription, SubscriptionResponse}
+import finalibre.saxo.rest.outgoing.streaming.topics.{InvestmentTopic, StreamingTopic}
 import org.slf4j.LoggerFactory
 import responses.ServiceResult._
 import play.api.libs.json.{JsObject, JsValue, Json, JsonConfiguration, Reads}
@@ -67,12 +68,20 @@ class OpenApiService @Inject()(
     perform(resp => resp.get)(s"openapi.yaml", Some(callingContext), Nil, "https://gateway.saxobank.com/sim", true)(resp => resp)
   }
 
-  private def createSubscription[Topic <: StreamingTopic](endpoint : StreamingEndpoint[Topic], body : Product) : Future[CallResult[StreamingSubscription[Topic]]] = {
-    import io.circe.syntax._
+  def registerSubscription[Topic <: StreamingTopic](endpoint : StreamingEndpoint[Topic])(implicit context : OpenApiCallingContext, actorSystem : ActorSystem) : Future[CallResult[SubscriptionResponse[Topic]]] = {
+    import io.circe.parser.decode
     import io.circe.generic.auto._
-    val json = body.asJson
-    val bodyFunc = ((req : WSRequest) => req.withBody(json.spaces2))
-    val performResult = perform(req => req.post(json.spaces2))(endpoint.)
+    val jsonString = endpoint.postBodyFor(context.token)
+    val result = performWithCallResultFunction[SubscriptionResponse[Topic]](req => req.post(jsonString))(endpoint.subscriptionUrl,Some(context),Nil,openApiBaseUrl,false)(resp => {
+      decode[MultiEntrySubscriptionResponse[Topic]](resp.body) match {
+        case Right(success) => Right(success)
+        case Left(_) => decode[SingleEntrySubscriptionResponse[Topic]](resp.body) match {
+          case Right(success) => Right(success)
+          case Left(_) => Left(JsonConversionError[SubscriptionResponse[Topic]](resp.body))
+        }
+      }
+    })
+    result
 
   }
 
@@ -123,7 +132,16 @@ class OpenApiService @Inject()(
       }
     )
 
-  private def perform[A](verb : WSRequest => Future[WSResponse])(endpoint : String, context : Option[OpenApiCallingContext], urlArguments : List[(String, String)], baseUrl : String, useBasicAuthentication : Boolean, extraFunc : Option[WSRequest => WSRequest] = None)(func : WSResponse => A) : Future[CallResult[A]] = {
+  private def perform[A](verb : WSRequest => Future[WSResponse])(endpoint : String, context : Option[OpenApiCallingContext], urlArguments : List[(String, String)], baseUrl : String, useBasicAuthentication : Boolean, extraFunc : Option[WSRequest => WSRequest] = None)(func : WSResponse => A) : Future[CallResult[A]] =
+    performWithCallResultFunction(verb)(endpoint,context,urlArguments,baseUrl,useBasicAuthentication,extraFunc)(resp => Try {
+      func(resp)
+    } match {
+      case Success(v) => Right(v)
+      case Failure(err) => Left(ExceptionError(err))
+    })
+
+
+  private def performWithCallResultFunction[A](verb : WSRequest => Future[WSResponse])(endpoint : String, context : Option[OpenApiCallingContext], urlArguments : List[(String, String)], baseUrl : String, useBasicAuthentication : Boolean, extraFunc : Option[WSRequest => WSRequest] = None)(func : WSResponse => CallResult[A]) : Future[CallResult[A]] = {
     Try {
       val url = if(baseUrl.endsWith("/")) s"$baseUrl$endpoint" else s"$baseUrl/$endpoint"
       logger.info(s"Accessing URL: $url, with URL parameters: ${urlArguments.map(p => p._1 + "=" + p._2)}")
@@ -141,16 +159,7 @@ class OpenApiService @Inject()(
       }
 
       verb(req).map(res => filterSuccess(res) match {
-        case Right(resp) =>
-          Try {
-            logger.info(s"Going to call map function for response: ${resp.toString}")
-            val funcRes = func(resp)
-            funcRes
-          }
-          match {
-            case Success(v) => Right(v)
-            case Failure(err) => Left(ExceptionError(err))
-          }
+        case Right(resp) => func(resp)
         case left @ Left(err) => Left(err)
       })
 
@@ -158,6 +167,13 @@ class OpenApiService @Inject()(
   } match {
     case Failure(err) => Future { Left(ExceptionError(err))}
     case Success(fut) => fut
+  }
+
+  implicit val thisApiService : OpenApiService = this
+  object Streaming {
+    def createAutoTradingInvestmentSubscription(observer : StreamingObserver[InvestmentTopic])(implicit context : OpenApiCallingContext, actorSystem : ActorSystem) = {
+      registerSubscription(AutoTrading.Investments.Investments)
+    }
   }
 
 
