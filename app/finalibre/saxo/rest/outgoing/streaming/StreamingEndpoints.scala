@@ -1,6 +1,7 @@
 package finalibre.saxo.rest.outgoing.streaming
 
 import finalibre.saxo.configuration.SaxoConfig
+import finalibre.saxo.rest.outgoing.streaming.requests._
 import finalibre.saxo.rest.outgoing.streaming.topics._
 
 import java.util.UUID
@@ -12,8 +13,8 @@ object StreamingEndpoints {
     object Investments {
       val SubGroup = "investments"
       val Version = 1
-      val Investments = StreamingEndpoint[InvestmentTopic]("AutoTradingInvestments", Group, Version, SubGroup)
-      val Suggestions = StreamingEndpoint[InvestmentSuggestionTopic]("AutoTradingInvestmentSuggestions", Group, Version, s"$SubGroup/suggestions")
+      val Investments = StreamingEndpoint[InvestmentTopic, InvestmentSubscriptionRequest.type]("AutoTradingInvestments", Group, Version, SubGroup)
+      val Suggestions = StreamingEndpoint[InvestmentSuggestionTopic, InvestmentSubscriptionRequest.type]("AutoTradingInvestmentSuggestions", Group, Version, s"$SubGroup/suggestions")
     }
   }
 
@@ -22,7 +23,7 @@ object StreamingEndpoints {
     object Charts {
       val SubGroup = "charts"
       val Version = 1
-      val Charts = StreamingEndpoint[ChartTopic]("Charts", Group, Version, SubGroup)
+      val Charts = StreamingEndpoint[ChartTopic, ChartSubscriptionRequest]("Charts", Group, Version, SubGroup)
     }
   }
 
@@ -31,37 +32,37 @@ object StreamingEndpoints {
     object Accounts {
       val SubGroup = "accounts"
       val Version = 1
-      val Accounts = StreamingEndpoint[AccountTopic]("PortfolioAccounts", Group, Version, SubGroup)
+      val Accounts = StreamingEndpoint[AccountTopic, AccountSubscriptionRequest]("PortfolioAccounts", Group, Version, SubGroup)
     }
     object Balances {
       val SubGroup = "balances"
       val Version = 1
-      val Balances = StreamingEndpoint[BalanceTopic]("PortfolioBalances", Group, Version, SubGroup)
+      val Balances = StreamingEndpoint[BalanceTopic, BalanceSubscriptionRequest]("PortfolioBalances", Group, Version, SubGroup)
     }
     object ClosedPositions {
       val SubGroup = "closedpositions"
       val Version = 1
-      val ClosedPositions = StreamingEndpoint[ClosedPositionTopic]("PortfolioClosedPositions", Group, Version, SubGroup)
+      val ClosedPositions = StreamingEndpoint[ClosedPositionTopic, ClosedPositionSubscriptionRequest]("PortfolioClosedPositions", Group, Version, SubGroup)
     }
     object Exposure {
       val SubGroup = "exposure"
       val Version = 1
-      val Instruments = StreamingEndpoint[ExposureTopic]("PortfolioExposureInstruments", s"$Group/instruments", Version, SubGroup)
+      val Instruments = StreamingEndpoint[ExposureTopic, ClosedPositionSubscriptionRequest]("PortfolioExposureInstruments", s"$Group/instruments", Version, SubGroup)
     }
     object NetPositions {
       val SubGroup = "netpositions"
       val Version = 1
-      val NetPositions = StreamingEndpoint[NetPositionTopic]("PortfolioNetPositions", Group, Version, SubGroup)
+      val NetPositions = StreamingEndpoint[NetPositionTopic, NetPositionSubscriptionRequest]("PortfolioNetPositions", Group, Version, SubGroup)
     }
     object Orders {
       val SubGroup = "orders"
       val Version = 1
-      val Orders = StreamingEndpoint[OrderTopic]("PortfolioOrders", Group, Version, SubGroup)
+      val Orders = StreamingEndpoint[OrderTopic, OrdersSubscriptionRequest]("PortfolioOrders", Group, Version, SubGroup)
     }
     object Positions {
       val SubGroup = "positions"
       val Version = 1
-      val Positions = StreamingEndpoint("PortfolioPositions", Group, Version, SubGroup)
+      val Positions = StreamingEndpoint[_, PositionSubscriptionRequest]("PortfolioPositions", Group, Version, SubGroup)
     }
   }
 
@@ -70,13 +71,13 @@ object StreamingEndpoints {
     object Availability {
       val SubGroup = "availability"
       val Version = 1
-      val Availability = StreamingEndpoint("RootAvailability", Group, Version, SubGroup)
+      val Availability = StreamingEndpoint[_,AvailabilitySubscriptionRequest.type]("RootAvailability", Group, Version, SubGroup)
     }
 
     object Sessions {
       val SubGroup = "sessions"
       val Version = 1
-      val Events = StreamingEndpoint("RootSessionEvents", Group, Version, s"$SubGroup/events")
+      val Events = StreamingEndpoint[_,SessionSubscriptionRequest.type]("RootSessionEvents", Group, Version, s"$SubGroup/events")
     }
   }
 
@@ -85,23 +86,23 @@ object StreamingEndpoints {
     object InfoPrices {
       val SubGroup = "infoprices"
       val Version = 1
-      val InfoPrices = StreamingEndpoint("TradeInfoPrices", Group, Version, SubGroup)
+      val InfoPrices = StreamingEndpoint[_,PriceListSubscriptionRequest]("TradeInfoPrices", Group, Version, SubGroup)
     }
     object Messages {
       val SubGroup = "messages"
       val Version = 1
-      val Messages = StreamingEndpoint("TradeMessages", Group, Version, SubGroup)
+      val Messages = StreamingEndpoint[_,MessagesSubscriptionRequest.type]("TradeMessages", Group, Version, SubGroup)
     }
     object OptionsChain {
       val SubGroup = "optionschain"
       val Version = 1
-      val OptionsChain = StreamingEndpoint("TradeOptionsChain", Group, Version, SubGroup)
+      val OptionsChain = StreamingEndpoint[_,OptionChainRequest]("TradeOptionsChain", Group, Version, SubGroup)
     }
     object Prices {
       val SubGroup = "prices"
       val Version = 1
       val Prices = StreamingEndpoint("TradePrices", Group, Version, SubGroup)
-      val MultilegPrices = StreamingEndpoint("TradeMultiLegPrices", Group, Version, s"$SubGroup/multileg")
+      val MultilegPrices = StreamingEndpoint[_, PriceSubscriptionRequest]("TradeMultiLegPrices", Group, Version, s"$SubGroup/multileg")
     }
 
   }
@@ -109,7 +110,7 @@ object StreamingEndpoints {
 
 
 
-  case class StreamingEndpoint[T <: StreamingTopic](
+  case class StreamingEndpoint[T <: StreamingTopic, S <: SubscriptionRequest](
                               name : String,
                               group : String,
                               version : Int,
@@ -125,10 +126,11 @@ object StreamingEndpoints {
 
     import io.circe.generic.auto._, io.circe.syntax._
 
-    def postBodyFor(contextId : String) : String = Map(
+    def postBodyFor(contextId : String, request : S) : String = Map(
       "ContextId" -> contextId,
       "ReferenceId" -> referenceId,
-      "Format" -> "application/json"
+      "Format" -> "application/json",
+      "Arguments" -> request.asMap
     ).asJson.spaces2
   }
 

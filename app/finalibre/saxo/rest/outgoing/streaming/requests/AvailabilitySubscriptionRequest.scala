@@ -1,0 +1,3 @@
+package finalibre.saxo.rest.outgoing.streaming.requests
+
+case object AvailabilitySubscriptionRequest extends SubscriptionRequest
