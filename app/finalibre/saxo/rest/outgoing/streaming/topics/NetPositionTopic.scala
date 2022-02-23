@@ -47,13 +47,6 @@ case class NetPositionStatic(
                             )
 
 
-case class FixedIncomeData(
-                            closedAccruedInterest : Double,
-                            closedAccruedInterestInBaseCurrency : Double,
-                            openAccruedInterest : Double,
-                            openAccruedInterestInBaseCurrency : Double
-                          )
-
 case class NetPositionDynamic(
                                ask : Double,
                                averageOpenPrice : Double,

@@ -62,7 +62,7 @@ object StreamingEndpoints {
     object Positions {
       val SubGroup = "positions"
       val Version = 1
-      val Positions = StreamingEndpoint[_, PositionSubscriptionRequest]("PortfolioPositions", Group, Version, SubGroup)
+      val Positions = StreamingEndpoint[PositionTopic, PositionSubscriptionRequest]("PortfolioPositions", Group, Version, SubGroup)
     }
   }
 
@@ -71,13 +71,13 @@ object StreamingEndpoints {
     object Availability {
       val SubGroup = "availability"
       val Version = 1
-      val Availability = StreamingEndpoint[_,AvailabilitySubscriptionRequest.type]("RootAvailability", Group, Version, SubGroup)
+      val Availability = StreamingEndpoint[FeatureAvailabilityTopic,AvailabilitySubscriptionRequest.type]("RootAvailability", Group, Version, SubGroup)
     }
 
     object Sessions {
       val SubGroup = "sessions"
       val Version = 1
-      val Events = StreamingEndpoint[_,SessionSubscriptionRequest.type]("RootSessionEvents", Group, Version, s"$SubGroup/events")
+      val Events = StreamingEndpoint[SessionStateTopic,SessionSubscriptionRequest.type]("RootSessionEvents", Group, Version, s"$SubGroup/events")
     }
   }
 
@@ -86,23 +86,23 @@ object StreamingEndpoints {
     object InfoPrices {
       val SubGroup = "infoprices"
       val Version = 1
-      val InfoPrices = StreamingEndpoint[_,PriceListSubscriptionRequest]("TradeInfoPrices", Group, Version, SubGroup)
+      val InfoPrices = StreamingEndpoint[PriceTopic,PriceListSubscriptionRequest]("TradeInfoPrices", Group, Version, SubGroup)
     }
     object Messages {
       val SubGroup = "messages"
       val Version = 1
-      val Messages = StreamingEndpoint[_,MessagesSubscriptionRequest.type]("TradeMessages", Group, Version, SubGroup)
+      val Messages = StreamingEndpoint[TradeMessageTopic,MessagesSubscriptionRequest.type]("TradeMessages", Group, Version, SubGroup)
     }
     object OptionsChain {
       val SubGroup = "optionschain"
       val Version = 1
-      val OptionsChain = StreamingEndpoint[_,OptionChainRequest]("TradeOptionsChain", Group, Version, SubGroup)
+      val OptionsChain = StreamingEndpoint[OptionsChainTopic,OptionChainRequest]("TradeOptionsChain", Group, Version, SubGroup)
     }
     object Prices {
       val SubGroup = "prices"
       val Version = 1
-      val Prices = StreamingEndpoint("TradePrices", Group, Version, SubGroup)
-      val MultilegPrices = StreamingEndpoint[_, PriceSubscriptionRequest]("TradeMultiLegPrices", Group, Version, s"$SubGroup/multileg")
+      val Prices = StreamingEndpoint[PriceTopic, PriceSubscriptionRequest]("TradePrices", Group, Version, SubGroup)
+      val MultilegPrices = StreamingEndpoint[MultiLegPriceTopic, MultiLegSubscriptionRequest]("TradeMultiLegPrices", Group, Version, s"$SubGroup/multileg")
     }
 
   }
