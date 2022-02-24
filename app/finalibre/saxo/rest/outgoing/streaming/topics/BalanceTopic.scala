@@ -63,77 +63,13 @@ case class BalanceTopic(
                          variationMarginThreshold : Double
                        ) extends StreamingTopic
 
-case class TransactionsNotBookedDetails(
-                                         accrual : Double,
-                                         additionalTransactionCost : Double,
-                                         bondValue : Double,
-                                         cashDeposit : Double,
-                                         cashReservation : Double,
-                                         cashWithdrawal : Double,
-                                         certificatesValue : Double,
-                                         commission : Double,
-                                         exchangeFee : Double,
-                                         externalCharges : Double,
-                                         fundsReservedByOrder : Double,
-                                         ipoSubscriptionFee : Double,
-                                         leveragedKnockOutProductsValue : Double,
-                                         mutualFundValue : Double,
-                                         optionPremium : Double,
-                                         shareValue : Double,
-                                         stampDuty : Double,
-                                         warrantPremium : Double
-                                       )
 
 
 
-case class MarginOverviewGroup(
-                                contributors : Seq[MarginOverviewContributor],
-                                groupType : String,
-                                totalMargin : Double
-                              )
-
-case class MarginOverviewContributor(
-                                      assetTypes : Seq[String],
-                                      instrumentDescription : String,
-                                      instrumentSpecifier : String,
-                                      margin : String,
-                                      uic : Long
-                                    )
 
 
 
-case class MarginCollateralNotAvailableDetail(
-                                               initialFxHaircut : Double,
-                                               maintenanceFxHaircut : Double,
-                                               instrumentCollateralDetails : Seq[InstrumentCollateralDetail]
-                                             )
-
-case class InstrumentCollateralDetail(
-                                       assetType : String,
-                                       description : String,
-                                       initialCollateral : Double,
-                                       initialCollateralNotAvailable : Double,
-                                       maintenanceCollateral : Double,
-                                       maintenanceCollateralNotAvailable : Double,
-                                       marketValue : Double,
-                                       symbol : String,
-                                       uic : Long
-                                     )
 
 
-case class InitialMargin(
-                          collateralAvailable : Double,
-                          marginAvailable : Double,
-                          marginUsedByCurrentPositions : Double,
-                          marginUtilizationPct : Double,
-                          netEquityForMargin : Double,
-                          otherCollateralDeduction : Double
-                        )
-
-case class LineStatus(
-                          exposure: Double,
-                          line: Double,
-                          utilizationPct: Double
-                     )
 
 

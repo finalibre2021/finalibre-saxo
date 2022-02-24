@@ -5,7 +5,8 @@ import finalibre.saxo.configuration.SaxoConfig
 import finalibre.saxo.rest.outgoing.OpenApiService._
 import finalibre.saxo.rest.outgoing.responses.{ResponseAccount, ResponseAuthorizationToken, ResponseClient, ResponsePosition}
 import finalibre.saxo.rest.outgoing.streaming.StreamingEndpoints.{AutoTrading, StreamingEndpoint}
-import finalibre.saxo.rest.outgoing.streaming.{MultiEntrySubscriptionResponse, SingleEntrySubscriptionResponse, StreamingObserver, StreamingSubscription, SubscriptionResponse}
+import finalibre.saxo.rest.outgoing.streaming.requests.{InvestmentSubscriptionRequest, SubscriptionRequest}
+import finalibre.saxo.rest.outgoing.streaming.{MultiEntrySubscriptionResponse, SingleEntrySubscriptionResponse, StreamingConnection, StreamingEndpoints, StreamingObserver, StreamingSubscription, SubscriptionResponse}
 import finalibre.saxo.rest.outgoing.streaming.topics.{InvestmentTopic, StreamingTopic}
 import org.slf4j.LoggerFactory
 import responses.ServiceResult._
@@ -68,10 +69,10 @@ class OpenApiService @Inject()(
     perform(resp => resp.get)(s"openapi.yaml", Some(callingContext), Nil, "https://gateway.saxobank.com/sim", true)(resp => resp)
   }
 
-  def registerSubscription[Topic <: StreamingTopic](endpoint : StreamingEndpoint[Topic])(implicit context : OpenApiCallingContext, actorSystem : ActorSystem) : Future[CallResult[SubscriptionResponse[Topic]]] = {
+  def registerSubscription[Topic <: StreamingTopic, Request <: SubscriptionRequest](endpoint : StreamingEndpoint[Topic, Request], request : Request)(implicit context : OpenApiCallingContext, actorSystem : ActorSystem) : Future[CallResult[SubscriptionResponse[Topic]]] = {
     import io.circe.parser.decode
     import io.circe.generic.auto._
-    val jsonString = endpoint.postBodyFor(context.token)
+    val jsonString = endpoint.postBodyFor(context.token, request)
     val result = performWithCallResultFunction[SubscriptionResponse[Topic]](req => req.post(jsonString))(endpoint.subscriptionUrl,Some(context),Nil,openApiBaseUrl,false)(resp => {
       decode[MultiEntrySubscriptionResponse[Topic]](resp.body) match {
         case Right(success) => Right(success)
@@ -172,7 +173,7 @@ class OpenApiService @Inject()(
   implicit val thisApiService : OpenApiService = this
   object Streaming {
     def createAutoTradingInvestmentSubscription(observer : StreamingObserver[InvestmentTopic])(implicit context : OpenApiCallingContext, actorSystem : ActorSystem) = {
-      registerSubscription(AutoTrading.Investments.Investments)
+      StreamingConnection.createSubscriptionFor(StreamingEndpoints.AutoTrading.Investments.Investments, observer, InvestmentSubscriptionRequest)
     }
   }
 

@@ -39,12 +39,3 @@ case class ClosedPositionTopic(
                               uic : Int
                               ) extends StreamingTopic
 
-case class FxOptionsBaseData(
-                              barrierEventOccurred : Boolean,
-                              expiryCut : String,
-                              expiryDate : LocalDateTime,
-                              lowerBarrier : Double,
-                              putCall : String,
-                              strike : Double,
-                              upperBarrier : Double
-                            )

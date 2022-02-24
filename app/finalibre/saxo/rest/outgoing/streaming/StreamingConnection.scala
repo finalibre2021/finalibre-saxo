@@ -14,6 +14,7 @@ import finalibre.saxo.rest.outgoing.responses.ServiceResult.CallResult
 import finalibre.saxo.rest.outgoing.{OpenApiCallingContext, OpenApiService}
 import finalibre.saxo.rest.outgoing.streaming.StreamingConnection.connections
 import finalibre.saxo.rest.outgoing.streaming.StreamingEndpoints.StreamingEndpoint
+import finalibre.saxo.rest.outgoing.streaming.requests.SubscriptionRequest
 import finalibre.saxo.rest.outgoing.streaming.topics.StreamingTopic
 import io.circe._
 import io.circe.parser._
@@ -128,8 +129,7 @@ class StreamingConnection private[StreamingConnection](
     }
   }
 
-  private[streaming] def createSubscriptionFor[T <: StreamingTopic](endpoint : StreamingEndpoint[T], observer : StreamingObserver[T], initialState : Json): StreamingSubscription[T] = {
-
+  private[streaming] def createSubscriptionFor[T <: StreamingTopic, S <: SubscriptionRequest](endpoint : StreamingEndpoint[T,S], observer : StreamingObserver[T], initialState : Json): StreamingSubscription[T] = {
     connections
       .values
       .flatMap(_.activeSubscriptions)
@@ -192,12 +192,12 @@ object StreamingConnection {
     }
   }
 
-  def createSubscriptionFor[T <: StreamingTopic](endpoint : StreamingEndpoint[T], observer : StreamingObserver[T])(implicit context : OpenApiCallingContext, openApiService : OpenApiService, actorSystem : ActorSystem) : Future[CallResult[StreamingSubscription[T]]] = {
+  def createSubscriptionFor[T <: StreamingTopic, R <: SubscriptionRequest](endpoint : StreamingEndpoint[T,R], observer : StreamingObserver[T], request : R)(implicit context : OpenApiCallingContext, openApiService : OpenApiService, actorSystem : ActorSystem) : Future[CallResult[StreamingSubscription[T]]] = {
     val connection = getConnection(context.token)
     implicit val execContext = actorSystem.dispatcher
     import io.circe.syntax._
     import io.circe.generic.auto._
-    openApiService.registerSubscription(endpoint).map {
+    openApiService.registerSubscription(endpoint, request).map {
       case Left(e) => Left(e)
       case Right(res : MultiEntrySubscriptionResponse[T]) => {
         val subscription = connection.createSubscriptionFor(endpoint, observer, res.snapshot.asJson)

@@ -4,6 +4,7 @@ import akka.actor.ActorRef
 import finalibre.saxo.rest.outgoing.streaming.topics.StreamingTopic
 import io.circe.{Decoder, DecodingFailure, Json}
 import io.circe.generic.auto._
+import io.circe.generic.extras.Configuration
 import io.circe.parser._
 import org.slf4j.LoggerFactory
 

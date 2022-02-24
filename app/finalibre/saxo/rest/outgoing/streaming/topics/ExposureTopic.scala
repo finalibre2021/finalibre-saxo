@@ -8,7 +8,7 @@ case class ExposureTopic(
                           averageOpenPrice : Double,
                           calculationReliability : Option[String],
                           canBeClosed : Option[Boolean],
-                          displayAndFormat: DisplayAndFormat,
+                          displayAndFormat: Option[InstrumentDisplayAndFormat],
                           expiryDate : Option[LocalDateTime],
                           instrumentPriceDayPercentChange : Double,
                           lowerBarrier : Option[Double],
