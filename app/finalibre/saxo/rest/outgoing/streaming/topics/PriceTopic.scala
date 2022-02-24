@@ -5,7 +5,7 @@ import java.time.LocalDateTime
 case class PriceTopic(
                        assetType : String,
                        commissions : Option[Commissions],
-                       displayAndFormat: DisplayAndFormat,
+                       displayAndFormat: Option[InstrumentDisplayAndFormat],
                        greeks : Option[GreeksDetails],
                        historicalChanges : Option[HistoricalChanges],
                        instrumentPriceDetails : Option[InstrumentPriceDetails],
