@@ -4,7 +4,7 @@ import finalibre.saxo.rest.outgoing.streaming.topics._
 import play.api.libs.json.{Json => PlayJson, Reads => PlayReads, JsSuccess => PlayJsSuccess, JsError => PlayJsError, JsValue => PlayJsValue}
 import io.circe.{Json => CirceJson}
 
-import scala.reflect.{ClassManifest, ClassTag}
+import scala.reflect.{ClassTag}
 import scala.util.{Failure, Success, Try}
 
 object JsonTransformations {
@@ -15,13 +15,13 @@ object JsonTransformations {
     convert[T](json)
   }
 
-  def parseTopicSequence[T <: StreamingTopic](json : CirceJson) :  Either[String, Seq[T]] = {
+  def parseTopicSequence[T <: StreamingTopic](json : CirceJson)(implicit classTag : ClassTag[T]) :  Either[String, Seq[T]] = {
     implicit val simpleReads = Reads.playReadsFor[T]
     implicit val seqReads : PlayReads[Seq[T]] = PlayJson.reads[Seq[T]]
     convert[Seq[T]](json)
   }
 
-  private def convert[A](json : CirceJson)(implicit reads : PlayReads[A]) : Either[String, A] = {
+  private def convert[A](json : CirceJson)(implicit reads : PlayReads[A], classTag : ClassTag[A]) : Either[String, A] = {
     val asString = json.noSpaces
     Try{PlayJson.parse(asString)} match {
       case Failure(err) => Left(s"Failed to parse JSON: ${json.spaces2} with error: ${err.getMessage}")

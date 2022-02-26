@@ -8,6 +8,8 @@ import finalibre.saxo.rest.outgoing.streaming.StreamingEndpoints.{AutoTrading, S
 import finalibre.saxo.rest.outgoing.streaming.requests.{ChartSubscriptionRequest, InvestmentSubscriptionRequest, SubscriptionRequest}
 import finalibre.saxo.rest.outgoing.streaming.{MultiEntrySubscriptionResponse, SingleEntrySubscriptionResponse, StreamingConnection, StreamingEndpoints, StreamingObserver, StreamingSubscription, SubscriptionResponse}
 import finalibre.saxo.rest.outgoing.streaming.topics.{InvestmentTopic, StreamingTopic}
+import io.circe.Decoder
+import io.circe.generic.decoding.DerivedDecoder
 import org.slf4j.LoggerFactory
 import responses.ServiceResult._
 import play.api.libs.json.{JsObject, JsValue, Json, JsonConfiguration, Reads}
@@ -69,9 +71,14 @@ class OpenApiService @Inject()(
     perform(resp => resp.get)(s"openapi.yaml", Some(callingContext), Nil, "https://gateway.saxobank.com/sim", true)(resp => resp)
   }
 
-  def registerSubscription[Topic <: StreamingTopic, Request <: SubscriptionRequest](endpoint : StreamingEndpoint[Topic, Request], request : Request)(implicit context : OpenApiCallingContext, actorSystem : ActorSystem) : Future[CallResult[SubscriptionResponse[Topic]]] = {
+  def registerSubscription[Topic <: StreamingTopic, Request <: SubscriptionRequest](endpoint : StreamingEndpoint[Topic, Request], request : Request)(implicit context : OpenApiCallingContext, actorSystem : ActorSystem, topicDecoder : Decoder[Topic]) : Future[CallResult[SubscriptionResponse[Topic]]] = {
     import io.circe.parser.decode
-    import io.circe.generic.auto._
+    //import io.circe.generic.semiauto._
+    import io.circe.generic.auto._, io.circe.syntax._
+    /*implicit lazy val topicDecode : Decoder[Topic] = deriveDecoder[Topic]
+    implicit lazy val multiDecode : Decoder[MultiEntrySubscriptionResponse[Topic]] = deriveDecoder[MultiEntrySubscriptionResponse[Topic]]
+    implicit lazy val singleDecode : Decoder[SingleEntrySubscriptionResponse[Topic]] = deriveDecoder[SingleEntrySubscriptionResponse[Topic]]*/
+
     val jsonString = endpoint.postBodyFor(context.token, request)
     val result = performWithCallResultFunction[SubscriptionResponse[Topic]](req => req.post(jsonString))(endpoint.subscriptionUrl,Some(context),Nil,openApiBaseUrl,false)(resp => {
       decode[MultiEntrySubscriptionResponse[Topic]](resp.body) match {
