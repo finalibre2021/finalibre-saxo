@@ -172,17 +172,31 @@ class OpenApiService @Inject()(
 
   implicit val thisApiService : OpenApiService = this
   object Streaming {
+    import finalibre.saxo.rest.outgoing.streaming.StreamingEndpoints._
     import finalibre.saxo.rest.outgoing.streaming.topics._
+    import finalibre.saxo.rest.outgoing.streaming.requests._
+
     import finalibre.saxo.rest.outgoing.Enums._
     import ChartFieldSpec._
+    import Horizon._
+    import AssetType._
+    import BalanceFieldSpec._
     def createAutoTradingInvestmentSubscription(observer : StreamingObserver[InvestmentTopic])(implicit context : OpenApiCallingContext, actorSystem : ActorSystem) = {
       StreamingConnection.createSubscriptionFor(StreamingEndpoints.AutoTrading.Investments.Investments, observer, InvestmentSubscriptionRequest)
     }
+
     def createAutoTradingInvestmentSuggestionsSubscription(observer : StreamingObserver[InvestmentSuggestionTopic])(implicit context : OpenApiCallingContext, actorSystem : ActorSystem) = {
       StreamingConnection.createSubscriptionFor(StreamingEndpoints.AutoTrading.Investments.Suggestions, observer, InvestmentSubscriptionRequest)
     }
-    def createChartSubscription(assetType : String, count : Option[Int] = None, fieldGroups : Option[Seq[ChartFieldSpec]] = Some(List(ChartFieldSpec.Data)), horizon, uic, observer : StreamingObserver[ChartTopic])(implicit context : OpenApiCallingContext, actorSystem : ActorSystem) = {
-      StreamingConnection.createSubscriptionFor(StreamingEndpoints.Chart.Charts.Charts, observer, ChartSubscriptionRequest(assetType, count, fieldGroups.map(_.map(_.)), horizon, uic))
+    def createChartSubscription(observer : StreamingObserver[ChartTopic], assetType : AssetType , count : Option[Int] = None, fieldGroups : Option[Seq[ChartFieldSpec]] = Some(List(ChartFieldSpec.Data)), horizon : Horizon, uic : Long)(implicit context : OpenApiCallingContext, actorSystem : ActorSystem) = {
+      StreamingConnection.createSubscriptionFor(StreamingEndpoints.Chart.Charts.Charts, observer, ChartSubscriptionRequest(assetType.toString, count, fieldGroups.map(_.map(_.toString)), horizon.id, uic))
+    }
+
+    def createPortfolioAccountsSubscription(observer : StreamingObserver[AccountTopic], clientKey : String, accountKey : Option[String], accountGroupKey : Option[String] = None)(implicit context : OpenApiCallingContext, actorSystem : ActorSystem) = {
+      StreamingConnection.createSubscriptionFor(Portfolio.Accounts.Accounts, observer, AccountSubscriptionRequest(accountGroupKey, accountKey, clientKey))
+    }
+    def createPortfolioBalancesSubscription(observer : StreamingObserver[BalanceTopic], clientKey : String, accountKey : Option[String], accountGroupKey : Option[String] = None, balanceFieldSpec : Option[Seq[BalanceFieldSpec]])(implicit context : OpenApiCallingContext, actorSystem : ActorSystem) = {
+      StreamingConnection.createSubscriptionFor(Portfolio.Balances.Balances, observer, BalanceSubscriptionRequest(accountGroupKey, accountKey, clientKey, balanceFieldSpec.map(_.map(_.toString))))
     }
 
 

@@ -3,7 +3,9 @@ package finalibre.saxo.rest.outgoing
 object Enums {
   object Horizon extends Enumeration {
     type Horizon = Val
-    protected case class HorizonValue(inMinutes : Int) extends Val
+    case class HorizonValue(inMinutes : Int) extends Value {
+      override val id = inMinutes
+    }
     val Minute1 =  HorizonValue(1)
     val Minute5 =  HorizonValue(5)
     val Minute10 = HorizonValue(10)
@@ -25,7 +27,10 @@ object Enums {
 
   object AssetType extends Enumeration {
     type AssetType = Val
-    protected case class AssetTypeValue(asString : String) extends Val
+    case class AssetTypeValue(idStr : String) extends super.Val {
+      override def toString = idStr
+    }
+
     val Bond = AssetTypeValue("Bond")
     val Cash = AssetTypeValue("Cash")
     val CertificateBonus = AssetTypeValue("CertificateBonus")
@@ -90,13 +95,15 @@ object Enums {
       Stock, StockIndex, StockIndexOption, StockOption, Warrant, WarrantDoubleKnockOut, WarrantKnockOut, WarrantOpenEndKnockOut,
       WarrantSpread)
 
-    def fromString(str : String) = allValues.find(_.asString == str)
+    def fromString(str : String) = allValues.find(_.idStr == str)
 
   }
 
   object ChartFieldSpec extends Enumeration {
     type ChartFieldSpec = Val
-    protected case class ChartFieldValue(idStr : String, description : String) extends Val
+    case class ChartFieldValue(idStr : String, description : String) extends Val {
+      override def toString = idStr
+    }
     val BlockInfo =  ChartFieldValue("BlockInfo","Return information about previous blocks")
     val ChartInfo =  ChartFieldValue("ChartInfo","Return information about the time series")
     val Data =  ChartFieldValue("BlockInfo","Return the chart data samples")
@@ -105,6 +112,20 @@ object Enums {
     val allValues = List(BlockInfo, ChartInfo, Data, DisplayAndFormat)
     def fromString(str : String) = allValues.find(_.idStr == str)
   }
+
+  object BalanceFieldSpec extends Enumeration {
+    type BalanceFieldSpec = Val
+    case class BalanceFieldValue(idStr : String, description : String) extends Val {
+      override def toString = idStr
+    }
+
+    val CalculateCashForTrading =  BalanceFieldValue("CalculateCashForTrading","Calculates cash available for trading from all accounts.")
+    val MarginOverview =  BalanceFieldValue("MarginOverview","Include instrument margin utilization for positions on a client, account group or an account.")
+
+    val allValues = List(CalculateCashForTrading, MarginOverview)
+    def fromString(str : String) = allValues.find(_.idStr == str)
+  }
+
 
   /*
    */
