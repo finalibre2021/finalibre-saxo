@@ -41,11 +41,11 @@ case class StreamingSubscription[A <: StreamingTopic] private (
   }
 
   private def sendUpdate() : Unit = {
-    jsonState.as[Seq[A]] match {
-      case Right(res) => listeners.values.foreach(lis => lis.onSequenceUpdate(res))
-      case _ => jsonState.as[A] match {
-        case Right(res) => listeners.values.foreach(lis => lis.onUpdate(res))
-        case Left(DecodingFailure(str, value)) => logger.error(s"Error during converting json: String: ${str}, value: ${value}")
+    JsonTransformations.parseTopicSequence[A](jsonState) match {
+      case Right(seq) => listeners.values.foreach(lis => lis.onSequenceUpdate(seq))
+      case Left(_) => JsonTransformations.parseTopic[A](jsonState) match {
+        case Left (err) => logger.error(err)
+        case Right(value) => listeners.values.foreach(lis => lis.onUpdate(value))
       }
     }
   }

@@ -1,14 +1,46 @@
 package finalibre.saxo.rest.outgoing.streaming
+import finalibre.saxo.rest.outgoing.Encoding
 import finalibre.saxo.rest.outgoing.streaming.topics._
-import play.api.libs.json.{Json => PlayJson}
-import play.api.libs.json.{Reads => PlayReads}
+import play.api.libs.json.{Json => PlayJson, Reads => PlayReads, JsSuccess => PlayJsSuccess, JsError => PlayJsError, JsValue => PlayJsValue}
+import io.circe.{Json => CirceJson}
+
+import scala.reflect.{ClassManifest, ClassTag}
+import scala.util.{Failure, Success, Try}
 
 object JsonTransformations {
+  private implicit val playJsonParseConfig = Encoding.DefaultConfiguration
+
+  def parseTopic[T <: StreamingTopic](json : CirceJson) : Either[String, T] = {
+    implicit val reads = Reads.playReadsFor[T]
+    convert[T](json)
+  }
+
+  def parseTopicSequence[T <: StreamingTopic](json : CirceJson) :  Either[String, Seq[T]] = {
+    implicit val simpleReads = Reads.playReadsFor[T]
+    implicit val seqReads : PlayReads[Seq[T]] = PlayJson.reads[Seq[T]]
+    convert[Seq[T]](json)
+  }
+
+  private def convert[A](json : CirceJson)(implicit reads : PlayReads[A]) : Either[String, A] = {
+    val asString = json.noSpaces
+    Try{PlayJson.parse(asString)} match {
+      case Failure(err) => Left(s"Failed to parse JSON: ${json.spaces2} with error: ${err.getMessage}")
+      case Success(asPlayJson) => asPlayJson.validate[A] match {
+        case PlayJsSuccess(converted,_) => Right(converted)
+        case PlayJsError(errs) => Left(s"Failed to convert JSON: ${json.spaces2} to class: ${classOf[A].toString} with errors: " +
+          s"${errs.flatMap(_._2.map(_.message)).mkString(", ")}")
+      }
+
+    }
+  }
+
 
 
 
 
   object Reads {
+
+
     // No dependencies
     implicit val accountEntryReads : PlayReads[AccountEntry] = PlayJson.reads[AccountEntry]
     implicit val lineStatusReads : PlayReads[LineStatus] = PlayJson.reads[LineStatus]
@@ -72,6 +104,45 @@ object JsonTransformations {
     implicit val priceTopicReads : PlayReads[PriceTopic] = PlayJson.reads[PriceTopic]
     implicit val sessionStateReads : PlayReads[SessionStateTopic] = PlayJson.reads[SessionStateTopic]
     implicit val tradeMessageReads : PlayReads[TradeMessageTopic] = PlayJson.reads[TradeMessageTopic]
+
+    def playReadsFor[T <: StreamingTopic](implicit classTag : ClassTag[T]) : PlayReads[T] = classTag.runtimeClass match {
+      case AccountTopic_ => accountReads.asInstanceOf[PlayReads[T]]
+      case BalanceTopic_ => balanceReads.asInstanceOf[PlayReads[T]]
+      case ChartTopic_ => chartReads.asInstanceOf[PlayReads[T]]
+      case ClosedPositionTopic_ => closedPositionReads.asInstanceOf[PlayReads[T]]
+      case ExposureTopic_ => exposureReads.asInstanceOf[PlayReads[T]]
+      case FeatureAvailabilityTopic_ => featureAvailabilityReads.asInstanceOf[PlayReads[T]]
+      case InvestmentSuggestionTopic_ => investmentSuggestionReads.asInstanceOf[PlayReads[T]]
+      case InvestmentTopic_ => investmentReads.asInstanceOf[PlayReads[T]]
+      case NetPositionTopic_ => netPositionReads.asInstanceOf[PlayReads[T]]
+      case OptionsChainTopic_ => optionsChainReads.asInstanceOf[PlayReads[T]]
+      case OrderTopic_ => orderReads.asInstanceOf[PlayReads[T]]
+      case PositionTopic_ => positionReads.asInstanceOf[PlayReads[T]]
+      case PriceTopic_ => priceTopicReads.asInstanceOf[PlayReads[T]]
+      case SessionStateTopic_ => sessionStateReads.asInstanceOf[PlayReads[T]]
+      case TradeMessageTopic_ => tradeMessageReads.asInstanceOf[PlayReads[T]]
+      case _ => accountReads.asInstanceOf[PlayReads[T]]
+    }
+
+
+
+    private val AccountTopic_ = classOf[AccountTopic]
+    private val BalanceTopic_ = classOf[BalanceTopic]
+    private val ChartTopic_ = classOf[ChartTopic]
+    private val ClosedPositionTopic_ = classOf[ClosedPositionTopic]
+    private val ExposureTopic_ = classOf[ExposureTopic]
+    private val FeatureAvailabilityTopic_ = classOf[FeatureAvailabilityTopic]
+    private val InvestmentSuggestionTopic_ = classOf[InvestmentSuggestionTopic]
+    private val InvestmentTopic_ = classOf[InvestmentTopic]
+    private val NetPositionTopic_ = classOf[NetPositionTopic]
+    private val OptionsChainTopic_ = classOf[OptionsChainTopic]
+    private val OrderTopic_ = classOf[OrderTopic]
+    private val PositionTopic_ = classOf[PositionTopic]
+    private val PriceTopic_ = classOf[PriceTopic]
+    private val SessionStateTopic_ = classOf[SessionStateTopic]
+    private val TradeMessageTopic_ = classOf[TradeMessageTopic]
+
+
 
 
 

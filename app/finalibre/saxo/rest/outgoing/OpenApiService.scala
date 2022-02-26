@@ -5,7 +5,7 @@ import finalibre.saxo.configuration.SaxoConfig
 import finalibre.saxo.rest.outgoing.OpenApiService._
 import finalibre.saxo.rest.outgoing.responses.{ResponseAccount, ResponseAuthorizationToken, ResponseClient, ResponsePosition}
 import finalibre.saxo.rest.outgoing.streaming.StreamingEndpoints.{AutoTrading, StreamingEndpoint}
-import finalibre.saxo.rest.outgoing.streaming.requests.{InvestmentSubscriptionRequest, SubscriptionRequest}
+import finalibre.saxo.rest.outgoing.streaming.requests.{ChartSubscriptionRequest, InvestmentSubscriptionRequest, SubscriptionRequest}
 import finalibre.saxo.rest.outgoing.streaming.{MultiEntrySubscriptionResponse, SingleEntrySubscriptionResponse, StreamingConnection, StreamingEndpoints, StreamingObserver, StreamingSubscription, SubscriptionResponse}
 import finalibre.saxo.rest.outgoing.streaming.topics.{InvestmentTopic, StreamingTopic}
 import org.slf4j.LoggerFactory
@@ -172,9 +172,20 @@ class OpenApiService @Inject()(
 
   implicit val thisApiService : OpenApiService = this
   object Streaming {
+    import finalibre.saxo.rest.outgoing.streaming.topics._
+    import finalibre.saxo.rest.outgoing.Enums._
+    import ChartFieldSpec._
     def createAutoTradingInvestmentSubscription(observer : StreamingObserver[InvestmentTopic])(implicit context : OpenApiCallingContext, actorSystem : ActorSystem) = {
       StreamingConnection.createSubscriptionFor(StreamingEndpoints.AutoTrading.Investments.Investments, observer, InvestmentSubscriptionRequest)
     }
+    def createAutoTradingInvestmentSuggestionsSubscription(observer : StreamingObserver[InvestmentSuggestionTopic])(implicit context : OpenApiCallingContext, actorSystem : ActorSystem) = {
+      StreamingConnection.createSubscriptionFor(StreamingEndpoints.AutoTrading.Investments.Suggestions, observer, InvestmentSubscriptionRequest)
+    }
+    def createChartSubscription(assetType : String, count : Option[Int] = None, fieldGroups : Option[Seq[ChartFieldSpec]] = Some(List(ChartFieldSpec.Data)), horizon, uic, observer : StreamingObserver[ChartTopic])(implicit context : OpenApiCallingContext, actorSystem : ActorSystem) = {
+      StreamingConnection.createSubscriptionFor(StreamingEndpoints.Chart.Charts.Charts, observer, ChartSubscriptionRequest(assetType, count, fieldGroups.map(_.map(_.)), horizon, uic))
+    }
+
+
   }
 
 

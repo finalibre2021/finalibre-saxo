@@ -203,8 +203,11 @@ object StreamingConnection {
         val subscription = connection.createSubscriptionFor(endpoint, observer, res.snapshot.asJson)
         Right(subscription)
       }
+      case Right(res : SingleEntrySubscriptionResponse[T]) => {
+        val subscription = connection.createSubscriptionFor(endpoint, observer, res.snapshot.asJson)
+        Right(subscription)
+      }
     }
-    //
   }
 
 }
