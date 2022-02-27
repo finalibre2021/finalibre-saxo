@@ -20,8 +20,7 @@ lazy val root = (project in file("."))
       "org.postgresql" % "postgresql" % "42.2.24",
       "org.jsoup" % "jsoup" % "1.13.1",
       "com.google.api-client" % "google-api-client" % "1.32.1",
-      "com.auth0" % "java-jwt" % "3.18.2",
-      "ai.x" %% "play-json-extensions" % "0.42.0"
+      "com.auth0" % "java-jwt" % "3.18.2"
     ),
     Compile / resourceGenerators += Def.task {
       //val clientTarget = ( fastLinkJS in Compile in client).value.data
