@@ -40,7 +40,7 @@ object JsonTransformations {
 
   object Reads {
     // No dependencies
-    implicit val accountEntryReads : PlayReads[AccountEntry] = ManualReads.AccountEntryFormat.reads //PlayJson.reads[AccountEntry]
+    implicit val accountEntryReads : PlayReads[AccountEntry] = ManualReads.AccountEntryReads.reads //PlayJson.reads[AccountEntry]
     implicit val lineStatusReads : PlayReads[LineStatus] = PlayJson.reads[LineStatus]
     implicit val initialMarginReads : PlayReads[InitialMargin] = PlayJson.reads[InitialMargin]
     implicit val instrumentCollateralDetailReads : PlayReads[InstrumentCollateralDetail] = PlayJson.reads[InstrumentCollateralDetail]
@@ -52,7 +52,7 @@ object JsonTransformations {
     implicit val fxOptionsBaseDataReads : PlayReads[FxOptionsBaseData] = PlayJson.reads[FxOptionsBaseData]
     implicit val orderDurationReads : PlayReads[OrderDuration] = PlayJson.reads[OrderDuration]
     implicit val fixedIncomeReads : PlayReads[FixedIncomeData] = PlayJson.reads[FixedIncomeData]
-    implicit val subPositionViewReads : PlayReads[SubPositionView] = ManualReads.SubPositionViewRead.reads
+    implicit val subPositionViewReads : PlayReads[SubPositionView] = ManualReads.SubPositionViewReads.reads
     implicit val settlementInstructionsReads : PlayReads[SettlementInstructions] = PlayJson.reads[SettlementInstructions]
     implicit val expiryDataReads : PlayReads[ExpiryData] = PlayJson.reads[ExpiryData]
     implicit val optionsDataReads : PlayReads[OptionsData] = PlayJson.reads[OptionsData]
@@ -62,7 +62,7 @@ object JsonTransformations {
     implicit val instrumentExchangeReads : PlayReads[InstrumentExchangeDetails] = PlayJson.reads[InstrumentExchangeDetails]
     implicit val commissionsReads : PlayReads[Commissions] = PlayJson.reads[Commissions]
     implicit val historicalChangesReads : PlayReads[HistoricalChanges] = PlayJson.reads[HistoricalChanges]
-    implicit val instrumentPriceReads : PlayReads[InstrumentPriceDetails] = PlayJson.reads[InstrumentPriceDetails]
+    implicit val instrumentPriceReads : PlayReads[InstrumentPriceDetails] = ManualReads.InstrumentPriceDetailReads.reads
     implicit val marginImpactReads : PlayReads[MarginImpactBuySell] = PlayJson.reads[MarginImpactBuySell]
     implicit val marketDepthReads : PlayReads[MarketDepth] = PlayJson.reads[MarketDepth]
     implicit val priceInfoReads : PlayReads[PriceInfo] = PlayJson.reads[PriceInfo]
@@ -77,18 +77,18 @@ object JsonTransformations {
     implicit val marginCollateralNotAvailableReads : PlayReads[MarginCollateralNotAvailableDetail] = PlayJson.reads[MarginCollateralNotAvailableDetail]
     implicit val marginOverviewGroupReads : PlayReads[MarginOverviewGroup] = PlayJson.reads[MarginOverviewGroup]
     implicit val relatedOrderReads : PlayReads[RelatedOrderInfo] = PlayJson.reads[RelatedOrderInfo]
-    implicit val subPositionBaseReads : PlayReads[SubPositionBase] = PlayJson.reads[SubPositionBase]
+    implicit val subPositionBaseReads : PlayReads[SubPositionBase] = ManualReads.SubPositionBaseReads.reads
 
     // 2 or more dependencies
     implicit val subPositionResponseReads : PlayReads[SubPositionResponse] = PlayJson.reads[SubPositionResponse]
-    implicit val netPositionDynamicReads : PlayReads[NetPositionDynamic] = PlayJson.reads[NetPositionDynamic]
-    implicit val positionDynamicReads : PlayReads[PositionDynamic] = PlayJson.reads[PositionDynamic]
-    implicit val netPositionStaticReads : PlayReads[NetPositionStatic] = PlayJson.reads[NetPositionStatic]
-    implicit val positionStaticReads : PlayReads[PositionStatic] = PlayJson.reads[PositionStatic]
+    implicit val netPositionDynamicReads : PlayReads[NetPositionDynamic] = ManualReads.NetPositionDynamicRead.reads
+    implicit val positionDynamicReads : PlayReads[PositionDynamic] = ManualReads.PositionDynamicReads.reads
+    implicit val netPositionStaticReads : PlayReads[NetPositionStatic] = ManualReads.NetPositionStaticReads.reads
+    implicit val positionStaticReads : PlayReads[PositionStatic] = ManualReads.PositionStaticReads.reads
 
     // Topics
     implicit val accountReads : PlayReads[AccountTopic] = PlayJson.reads[AccountTopic]
-    implicit val balanceReads : PlayReads[BalanceTopic] = PlayJson.reads[BalanceTopic]
+    implicit val balanceReads : PlayReads[BalanceTopic] = ManualReads.BalanceTopicReads.reads
     implicit val chartReads : PlayReads[ChartTopic] = PlayJson.reads[ChartTopic]
     implicit val closedPositionReads : PlayReads[ClosedPositionTopic] = PlayJson.reads[ClosedPositionTopic]
     implicit val exposureReads : PlayReads[ExposureTopic] = PlayJson.reads[ExposureTopic]
