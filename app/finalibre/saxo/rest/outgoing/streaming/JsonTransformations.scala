@@ -11,13 +11,13 @@ object JsonTransformations {
   private implicit val playJsonParseConfig = Encoding.DefaultConfiguration
 
   def parseTopic[T <: StreamingTopic](json : CirceJson) : Either[String, T] = {
-    implicit val reads = Reads.playReadsFor[T]
+    implicit val reads : PlayReads[T] = Reads.playReadsFor[T]
     convert[T](json)
   }
 
   def parseTopicSequence[T <: StreamingTopic](json : CirceJson)(implicit classTag : ClassTag[T]) :  Either[String, Seq[T]] = {
     implicit val simpleReads = Reads.playReadsFor[T]
-    implicit val seqReads : PlayReads[Seq[T]] = PlayJson.reads[Seq[T]]
+    implicit val seqReads : PlayReads[Seq[T]] = PlayReads.seq(simpleReads)
     convert[Seq[T]](json)
   }
 

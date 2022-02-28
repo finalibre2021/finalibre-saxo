@@ -128,6 +128,11 @@ object ManualReads {
                                        relatedPositionId : Option[String], sourceOrderId : String, spotDate : LocalDate, srdLastTradeDate : Option[LocalDateTime],
                                        srdSettlementDate : Option[LocalDateTime], status : String, toOpenClose : Option[String], uic : Long, valueDate : LocalDateTime)
 
+    import finalibre.saxo.rest.outgoing.streaming.JsonTransformations.{Reads => AutoReads}
+    import AutoReads.fixedIncomeReads
+    import AutoReads.optionsDataReads
+    import AutoReads.relatedOrderReads
+
     val part1Reads = Json.reads[SubPositionBasePartial1]
     val part2reads = Json.reads[SubPositionBasePartial2]
 
@@ -159,6 +164,9 @@ object ManualReads {
                                           profitLossOnTrade : Double, profitLossOnTradeInBaseCurrency : Double, realizedCostsTotal : Double, realizedCostsTotalInBaseCurrency : Double,
                                           realizedProfitLoss : Double, realizedProfitLossInBaseCurrency : Double, settlementInstructions : Option[SettlementInstructions],
                                           status : String, tradeCostsTotal : Double, tradeCostsTotalInBaseCurrency : Double)
+
+    import finalibre.saxo.rest.outgoing.streaming.JsonTransformations.{Reads => AutoReads}
+    import AutoReads.settlementInstructionsReads
 
     val part1Reads = Json.reads[NetPositionDynamicPartial1]
     val part2reads = Json.reads[NetPositionDynamicPartial2]
@@ -194,6 +202,9 @@ object ManualReads {
                                        realizedProfitLoss : Double, realizedProfitLossInBaseCurrency : Double, settlementInstructions : Option[SettlementInstructions],
                                        status : String, tradeCostsTotal : Double, tradeCostsTotalInBaseCurrency : Double)
 
+    import finalibre.saxo.rest.outgoing.streaming.JsonTransformations.{Reads => AutoReads}
+    import AutoReads.settlementInstructionsReads
+
     val part1Reads = Json.reads[PositionDynamicPartial1]
     val part2reads = Json.reads[PositionDynamicPartial2]
 
@@ -226,6 +237,10 @@ object ManualReads {
                                          singlePositionId : Option[String], singlePositionStatus : Option[String], srdLastTradeDate : Option[LocalDateTime], srdSettlementDate : Option[LocalDateTime],
                                          tradingStatus : String, uic : Long, valueDate : LocalDateTime)
 
+    import finalibre.saxo.rest.outgoing.streaming.JsonTransformations.{Reads => AutoReads}
+    import AutoReads.fixedIncomeReads
+    import AutoReads.optionsDataReads
+
     val part1Reads = Json.reads[NetPositionStaticPartial1]
     val part2reads = Json.reads[NetPositionStaticPartial2]
 
@@ -257,7 +272,10 @@ object ManualReads {
                                       srdLastTradeDate : Option[LocalDateTime], srdSettlementDate : Option[LocalDateTime], status : String,
                                       toOpenClose : Option[String], uic : Long, valueDate : LocalDateTime)
 
-
+    import finalibre.saxo.rest.outgoing.streaming.JsonTransformations.{Reads => AutoReads}
+    import AutoReads.fixedIncomeReads
+    import AutoReads.optionsDataReads
+    import AutoReads.relatedOrderReads
 
     val part1Reads = Json.reads[PositionStaticPartial1]
     val part2reads = Json.reads[PositionStaticPartial2]
@@ -301,6 +319,12 @@ object ManualReads {
                                     unrealizedMarginProfitLoss : Double, unrealizedPositionsValue : Double, variationMargin : Double,
                                     variationMarginCashBalance : Double, variationMarginThreshold : Double)
 
+    import finalibre.saxo.rest.outgoing.streaming.JsonTransformations.{Reads => AutoReads}
+    import AutoReads.lineStatusReads
+    import AutoReads.initialMarginReads
+    import AutoReads.marginCollateralNotAvailableReads
+    import AutoReads.marginOverviewGroupReads
+    import AutoReads.transactionsNotBookedReads
 
     val part1Reads = Json.reads[BalanceTopicPartial1]
     val part2reads = Json.reads[BalanceTopicPartial2]
