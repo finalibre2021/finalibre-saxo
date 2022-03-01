@@ -179,6 +179,8 @@ class OpenApiService @Inject()(
 
   implicit val thisApiService : OpenApiService = this
   object Streaming {
+    import io.circe.generic.semiauto.{deriveDecoder => circeDecoder}
+    import io.circe.generic.semiauto.{deriveEncoder => circeEncoder}
     import finalibre.saxo.rest.outgoing.streaming.StreamingEndpoints._
     import finalibre.saxo.rest.outgoing.streaming.topics._
     import finalibre.saxo.rest.outgoing.streaming.requests._
@@ -189,20 +191,52 @@ class OpenApiService @Inject()(
     import AssetType._
     import BalanceFieldSpec._
     def createAutoTradingInvestmentSubscription(observer : StreamingObserver[InvestmentTopic])(implicit context : OpenApiCallingContext, actorSystem : ActorSystem) = {
+      implicit val decoder = circeDecoder[InvestmentTopic]
+      implicit val encoder = circeEncoder[InvestmentTopic]
       StreamingConnection.createSubscriptionFor(StreamingEndpoints.AutoTrading.Investments.Investments, observer, InvestmentSubscriptionRequest)
     }
 
     def createAutoTradingInvestmentSuggestionsSubscription(observer : StreamingObserver[InvestmentSuggestionTopic])(implicit context : OpenApiCallingContext, actorSystem : ActorSystem) = {
+      implicit val decoder = circeDecoder[InvestmentSuggestionTopic]
+      implicit val encoder = circeEncoder[InvestmentSuggestionTopic]
       StreamingConnection.createSubscriptionFor(StreamingEndpoints.AutoTrading.Investments.Suggestions, observer, InvestmentSubscriptionRequest)
     }
     def createChartSubscription(observer : StreamingObserver[ChartTopic], assetType : AssetType , count : Option[Int] = None, fieldGroups : Option[Seq[ChartFieldSpec]] = Some(List(ChartFieldSpec.Data)), horizon : Horizon, uic : Long)(implicit context : OpenApiCallingContext, actorSystem : ActorSystem) = {
+      implicit val chartInfoDecoder = circeDecoder[ChartInfo]
+      implicit val chartDataEntryDecoder = circeDecoder[ChartDataEntry]
+      implicit val displayAndFormatDecoder = circeDecoder[ChartDisplayAndFormat]
+      implicit val decoder = circeDecoder[ChartTopic]
+      implicit val chartInfoEncoder = circeEncoder[ChartInfo]
+      implicit val chartDataEntryEncoder = circeEncoder[ChartDataEntry]
+      implicit val displayAndFormatEncoder = circeEncoder[ChartDisplayAndFormat]
+      implicit val encoder = circeEncoder[ChartTopic]
       StreamingConnection.createSubscriptionFor(StreamingEndpoints.Chart.Charts.Charts, observer, ChartSubscriptionRequest(assetType.toString, count, fieldGroups.map(_.map(_.toString)), horizon.id, uic))
     }
 
     def createPortfolioAccountsSubscription(observer : StreamingObserver[AccountTopic], clientKey : String, accountKey : Option[String], accountGroupKey : Option[String] = None)(implicit context : OpenApiCallingContext, actorSystem : ActorSystem) = {
+      implicit val entryDecoder = circeDecoder[AccountEntry]
+      implicit val decoder = circeDecoder[AccountTopic]
+      implicit val entryEncoder = circeEncoder[AccountEntry]
+      implicit val encoder = circeEncoder[AccountTopic]
       StreamingConnection.createSubscriptionFor(Portfolio.Accounts.Accounts, observer, AccountSubscriptionRequest(accountGroupKey, accountKey, clientKey))
     }
     def createPortfolioBalancesSubscription(observer : StreamingObserver[BalanceTopic], clientKey : String, accountKey : Option[String], accountGroupKey : Option[String] = None, balanceFieldSpec : Option[Seq[BalanceFieldSpec]])(implicit context : OpenApiCallingContext, actorSystem : ActorSystem) = {
+      implicit val lineStatusDecoder = circeDecoder[LineStatus]
+      implicit val instrumentCollateralDetailDecoder = circeDecoder[InstrumentCollateralDetail]
+      implicit val marginOverviewContributorDecoder = circeDecoder[MarginOverviewContributor]
+      implicit val marginCollateralNotAvailableDetailDecoder = circeDecoder[MarginCollateralNotAvailableDetail]
+      implicit val marginOverviewGroupDecoder = circeDecoder[MarginOverviewGroup]
+      implicit val transactionsNotBookedDetailsDecoder = circeDecoder[TransactionsNotBookedDetails]
+      implicit val initialMarginDecoder = circeDecoder[InitialMargin]
+      implicit val decoder = circeDecoder[BalanceTopic]
+      implicit val lineStatusEncoder = circeEncoder[LineStatus]
+      implicit val instrumentCollateralDetailEncoder = circeEncoder[InstrumentCollateralDetail]
+      implicit val marginOverviewContributorEncoder = circeEncoder[MarginOverviewContributor]
+      implicit val marginCollateralNotAvailableDetailEncoder = circeEncoder[MarginCollateralNotAvailableDetail]
+      implicit val marginOverviewGroupEncoder = circeEncoder[MarginOverviewGroup]
+      implicit val transactionsNotBookedDetailsEncoder = circeEncoder[TransactionsNotBookedDetails]
+      implicit val initialMarginEncoder = circeEncoder[InitialMargin]
+      implicit val encoder = circeEncoder[BalanceTopic]
       StreamingConnection.createSubscriptionFor(Portfolio.Balances.Balances, observer, BalanceSubscriptionRequest(accountGroupKey, accountKey, clientKey, balanceFieldSpec.map(_.map(_.toString))))
     }
 

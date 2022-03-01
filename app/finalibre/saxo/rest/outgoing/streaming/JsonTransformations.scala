@@ -10,7 +10,7 @@ import scala.util.{Failure, Success, Try}
 object JsonTransformations {
   private implicit val playJsonParseConfig = Encoding.DefaultConfiguration
 
-  def parseTopic[T <: StreamingTopic](json : CirceJson) : Either[String, T] = {
+  def parseTopic[T <: StreamingTopic](json : CirceJson)(implicit ct : ClassTag[T]) : Either[String, T] = {
     implicit val reads : PlayReads[T] = Reads.playReadsFor[T]
     convert[T](json)
   }
@@ -27,7 +27,7 @@ object JsonTransformations {
       case Failure(err) => Left(s"Failed to parse JSON: ${json.spaces2} with error: ${err.getMessage}")
       case Success(asPlayJson) => asPlayJson.validate[A] match {
         case PlayJsSuccess(converted,_) => Right(converted)
-        case PlayJsError(errs) => Left(s"Failed to convert JSON: ${json.spaces2} to class: ${classOf[A].toString} with errors: " +
+        case PlayJsError(errs) => Left(s"Failed to convert JSON: ${json.spaces2} to class: ${classTag.runtimeClass} with errors: " +
           s"${errs.flatMap(_._2.map(_.message)).mkString(", ")}")
       }
 

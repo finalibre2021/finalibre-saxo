@@ -29,8 +29,9 @@ trait StreamingObserver[T <: StreamingTopic] {
 
 object StreamingObserver {
   private var currentId = 0L
+  private val idLock = new {}
 
-  private[StreamingSubscription] def nextId() : Long = StreamingObserver.synchronized {
+  private[StreamingObserver] def nextId() : Long = idLock.synchronized {
     currentId += 1
     currentId
   }

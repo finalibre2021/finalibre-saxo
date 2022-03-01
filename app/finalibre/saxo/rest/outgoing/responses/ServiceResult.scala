@@ -1,5 +1,7 @@
 package finalibre.saxo.rest.outgoing.responses
 
+import scala.reflect.ClassTag
+
 object ServiceResult {
   type CallResult[A] = Either[ServiceError, A]
   sealed abstract class ServiceError {
@@ -18,9 +20,9 @@ object ServiceResult {
   case class OtherError(str : String) extends ServiceError {
     override def errorString = str
   }
-  case class JsonConversionError[A](jsonString : String) extends ServiceError {
+  case class JsonConversionError[A](jsonString : String)(implicit ct : ClassTag[A]) extends ServiceError {
     import scala.reflect._
-    override def errorString: String = s"Failed to convert following json string to: ${classTag[A].runtimeClass.toString} - json string: ${jsonString}"
+    override def errorString: String = s"Failed to convert following json string to: ${ct.runtimeClass} - json string: ${jsonString}"
   }
 
 

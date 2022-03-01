@@ -192,20 +192,24 @@ object StreamingConnection {
     }
   }
 
-  def createSubscriptionFor[T <: StreamingTopic, R <: SubscriptionRequest](endpoint : StreamingEndpoint[T,R], observer : StreamingObserver[T], request : R)(implicit context : OpenApiCallingContext, openApiService : OpenApiService, actorSystem : ActorSystem) : Future[CallResult[StreamingSubscription[T]]] = {
+  def createSubscriptionFor[T <: StreamingTopic, R <: SubscriptionRequest](endpoint : StreamingEndpoint[T,R], observer : StreamingObserver[T], request : R)(implicit context : OpenApiCallingContext, openApiService : OpenApiService, actorSystem : ActorSystem, decoder : Decoder[T], encoder : Encoder[T]) : Future[CallResult[StreamingSubscription[T]]] = {
     val connection = getConnection(context.token)
     implicit val execContext = actorSystem.dispatcher
-    import io.circe.syntax._
-    import io.circe.generic.auto._
     openApiService.registerSubscription(endpoint, request).map {
       case Left(e) => Left(e)
-      case Right(res : MultiEntrySubscriptionResponse[T]) => {
-        val subscription = connection.createSubscriptionFor(endpoint, observer, res.snapshot.asJson)
-        Right(subscription)
-      }
-      case Right(res : SingleEntrySubscriptionResponse[T]) => {
-        val subscription = connection.createSubscriptionFor(endpoint, observer, res.snapshot.asJson)
-        Right(subscription)
+      case Right(res) => {
+        import io.circe.syntax._
+        //import io.circe.generic.auto._
+        if(res.isInstanceOf[MultiEntrySubscriptionResponse[_]]) {
+          val cast =  res.asInstanceOf[MultiEntrySubscriptionResponse[T]]
+          val subscription = connection.createSubscriptionFor(endpoint, observer, cast.snapshot.asJson)
+          Right(subscription)
+        }
+        else {
+          val cast =  res.asInstanceOf[SingleEntrySubscriptionResponse[T]]
+          val subscription = connection.createSubscriptionFor(endpoint, observer, cast.snapshot.asJson)
+          Right(subscription)
+        }
       }
     }
   }
