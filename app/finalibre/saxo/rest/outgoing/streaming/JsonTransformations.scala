@@ -90,14 +90,14 @@ object JsonTransformations {
     implicit val accountReads : PlayReads[AccountTopic] = PlayJson.reads[AccountTopic]
     implicit val balanceReads : PlayReads[BalanceTopic] = ManualReads.BalanceTopicReads.reads
     implicit val chartReads : PlayReads[ChartTopic] = PlayJson.reads[ChartTopic]
-    implicit val closedPositionReads : PlayReads[ClosedPositionTopic] = PlayJson.reads[ClosedPositionTopic]
+    implicit val closedPositionReads : PlayReads[ClosedPositionTopic] = ManualReads.ClosedPositionTopicReads.reads
     implicit val exposureReads : PlayReads[ExposureTopic] = PlayJson.reads[ExposureTopic]
     implicit val featureAvailabilityReads : PlayReads[FeatureAvailabilityTopic] = PlayJson.reads[FeatureAvailabilityTopic]
     implicit val investmentSuggestionReads : PlayReads[InvestmentSuggestionTopic] = PlayJson.reads[InvestmentSuggestionTopic]
-    implicit val investmentReads : PlayReads[InvestmentTopic] = PlayJson.reads[InvestmentTopic]
+    implicit val investmentReads : PlayReads[InvestmentTopic] = ManualReads.InvestmentTopicReads.reads
     implicit val netPositionReads : PlayReads[NetPositionTopic] = PlayJson.reads[NetPositionTopic]
     implicit val optionsChainReads : PlayReads[OptionsChainTopic] = PlayJson.reads[OptionsChainTopic]
-    implicit val orderReads : PlayReads[OrderTopic] = PlayJson.reads[OrderTopic]
+    implicit val orderReads : PlayReads[OrderTopic] = ManualReads.OrderTopicReads.reads
     implicit val positionReads : PlayReads[PositionTopic] = PlayJson.reads[PositionTopic]
     implicit val priceTopicReads : PlayReads[PriceTopic] = PlayJson.reads[PriceTopic]
     implicit val sessionStateReads : PlayReads[SessionStateTopic] = PlayJson.reads[SessionStateTopic]

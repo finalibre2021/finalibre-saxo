@@ -358,5 +358,134 @@ object ManualReads {
     }
   }
 
+  object ClosedPositionTopicReads {
+    case class ClosedPositionTopicPartial1(accountId : String, amount : Double, assetType : String, buyOrSell : String, clientId : String, closedProfitLoss : Double, closedProfitLossInBaseCurrency : Double,
+                                           closingIndexRatio : Double, closingMarketValue : Double, closingMarketValueInBaseCurrency : Double,
+                                           closingMethod : String, closingPositionId : String, closingPremium : Double, closingPremiumInBaseCurrency : Double,
+                                           closingPrice : Double, conversionRateInstrumentToBaseSettledClosing : Boolean, conversionRateInstrumentToBaseSettledOpening : Boolean)
+
+    case class ClosedPositionTopicPartial2(costClosing : Double, costClosingInBaseCurrency : Double, costOpening : Double, costOpeningInBaseCurrency : Double,
+                                           executionTimeClose : LocalDateTime, executionTimeOpen : LocalDateTime, expiryDate : Option[LocalDateTime],
+                                           fxOptionData : Option[FxOptionsBaseData], noticeDate : Option[LocalDateTime], openingIndexRatio : Option[Double],
+                                           openingPositionId : String, openPrice : Double, profitLossCurrencyConversion : Double, profitLossOnTrade : Double,
+                                           profitLossOnTradeInBaseCurrency : Double, srdSettlementDate : LocalDateTime, uic : Int )
+
+    import finalibre.saxo.rest.outgoing.streaming.JsonTransformations.{Reads => AutoReads}
+    import AutoReads.fxOptionsBaseDataReads
+
+    val part1Reads = Json.reads[ClosedPositionTopicPartial1]
+    val part2reads = Json.reads[ClosedPositionTopicPartial2]
+
+    val reads = (part1Reads ~ part2reads).tupled.map {
+      case (
+        ClosedPositionTopicPartial1(accountId, amount, assetType, buyOrSell, clientId, closedProfitLoss, closedProfitLossInBaseCurrency,
+        closingIndexRatio, closingMarketValue, closingMarketValueInBaseCurrency, closingMethod, closingPositionId, closingPremium, closingPremiumInBaseCurrency,
+        closingPrice, conversionRateInstrumentToBaseSettledClosing, conversionRateInstrumentToBaseSettledOpening)
+        ,
+        ClosedPositionTopicPartial2(costClosing, costClosingInBaseCurrency, costOpening, costOpeningInBaseCurrency, executionTimeClose, executionTimeOpen,
+        expiryDate, fxOptionData, noticeDate, openingIndexRatio, openingPositionId, openPrice, profitLossCurrencyConversion, profitLossOnTrade,
+        profitLossOnTradeInBaseCurrency, srdSettlementDate, uic)
+        ) =>
+        ClosedPositionTopic(accountId, amount, assetType, buyOrSell, clientId, closedProfitLoss, closedProfitLossInBaseCurrency, closingIndexRatio,
+          closingMarketValue, closingMarketValueInBaseCurrency, closingMethod, closingPositionId, closingPremium, closingPremiumInBaseCurrency,
+          closingPrice, conversionRateInstrumentToBaseSettledClosing, conversionRateInstrumentToBaseSettledOpening, costClosing, costClosingInBaseCurrency,
+          costOpening, costOpeningInBaseCurrency, executionTimeClose, executionTimeOpen, expiryDate, fxOptionData, noticeDate,
+          openingIndexRatio, openingPositionId, openPrice, profitLossCurrencyConversion, profitLossOnTrade,
+          profitLossOnTradeInBaseCurrency, srdSettlementDate, uic)
+    }
+  }
+
+  object InvestmentTopicReads {
+    case class InvestmentPartial1(accountId : String, accountKey : String, autoTradingPartnerLeaderId : Option[String], clientId : Long,
+                                  currency : String, displayName : String, displayState : Option[Int], entryGateResult : Option[String], errorNumber : Int,
+                                  initialFunding : Double, investmentId : String, investmentProcessState : String, investmentShieldAmount : Double,
+                                  investmentStateId : Int)
+
+    case class InvestmentPartial2(isAuthorizedToFollow : Boolean, isFollowing : Boolean, isOpenForFollowers : Boolean, isReadyForTrading : Boolean,
+                                  isTradeFollowerReady : Boolean, isWithdrawalInProgress : Boolean, minimumFunding : Double, pendingFunding : Double,
+                                  reservedAmount : Double, stateName : String, strategyName : Option[String], tradeLeaderId : Option[String])
+
+    val part1Reads = Json.reads[InvestmentPartial1]
+    val part2reads = Json.reads[InvestmentPartial2]
+
+    val reads = (part1Reads ~ part2reads).tupled.map {
+      case (
+        InvestmentPartial1(accountId, accountKey, autoTradingPartnerLeaderId, clientId, currency, displayName, displayState, entryGateResult,
+        errorNumber, initialFunding, investmentId, investmentProcessState, investmentShieldAmount, investmentStateId)
+        ,
+        InvestmentPartial2(isAuthorizedToFollow, isFollowing, isOpenForFollowers, isReadyForTrading, isTradeFollowerReady, isWithdrawalInProgress,
+        minimumFunding, pendingFunding, reservedAmount, stateName, strategyName, tradeLeaderId)
+        ) =>
+        InvestmentTopic(accountId, accountKey, autoTradingPartnerLeaderId, clientId, currency, displayName, displayState, entryGateResult,
+          errorNumber, initialFunding, investmentId, investmentProcessState, investmentShieldAmount, investmentStateId, isAuthorizedToFollow,
+          isFollowing, isOpenForFollowers, isReadyForTrading, isTradeFollowerReady, isWithdrawalInProgress, minimumFunding, pendingFunding,
+          reservedAmount, stateName, strategyName, tradeLeaderId)
+    }
+  }
+
+  object OrderTopicReads {
+    case class OrderTopicPartial1(accountKey : String, clientKey : String, clientId : String, clientName : String, ownerId : Option[String],
+                                  accountId : Option[String], currentPriceLastTraded : LocalDateTime, marketValue : Double, bid : Double, ask : Double,
+                                  filledAmount : Option[Double], tradeIdeaId : Option[String], algoStrategyName : Option[String], correlationKey : Option[String],
+                                  correlationTypes : Option[Seq[String]], switchInstrumentUic : Option[Long], cashAmount : Option[Double],
+                                  multiLegOrderDetails : Option[MultiLegOrderDetails])
+
+    case class OrderTopicPartial2(greeks : Option[GreeksDetails], openInterest : Option[Double], tradingStatus : String, shortTrading : Option[String],
+                                  tradeAllocationKey : Option[Long], allocationKeyId : Option[String], ipoFinancingAmountPct : Option[Double], orderId : String,
+                                  relatedOpenOrders : Option[Seq[RelatedOrderInfo]], externalReference : Option[String], triggerParentOrderId : Option[String],
+                                  ipoSubscriptionFee : Option[Double], optionsData : Option[OptionsData], clientNote : Option[String],
+                                  currentPrice : Option[Double], currentPriceType  : Option[String], currentPriceDelayMinutes : Option[Int], marketPrice : Double)
+
+    case class OrderTopicPartial3(nonTradableReason : Option[String], displayAndFormat : InstrumentDisplayAndFormat, exchange : InstrumentExchangeDetails,
+                                  uic : Long, assetType : String, openOrderType : String, buySell : String, amount : Double, toOpenClose : Option[String],
+                                  price : Double, expiryDate : Option[LocalDateTime], valueDate : Option[LocalDateTime], status : String,
+                                  duration : Option[OrderDuration], orderTime : LocalDateTime)
+
+    case class OrderTopicPartial4(amountAccountValueRatio : Option[String], orderRelation : Option[String], relatedPositionId : Option[String],
+                                  trailingStopStep : Option[Double], stopLimitPrice : Option[Double], copiedPositionId : Option[String],
+                                  orderAmountType : Option[String], isMarketOpen : Boolean, isForceOpen : Option[Boolean], marketState : String,
+                                  breakoutTriggerUpPrice : Option[Double], breakoutTriggerDownPrice : Option[Double], triggerPriceType : Option[String],
+                                  trailingStopDistanceToMarket : Option[Double], calculationReliability : Option[String],
+                                  distanceToMarket : Option[Double])
+
+
+    import finalibre.saxo.rest.outgoing.streaming.JsonTransformations.{Reads => AutoReads}
+    import AutoReads.multiLegOrderDetailsReads
+    import AutoReads.greeksReads
+    import AutoReads.relatedOrderReads
+    import AutoReads.optionsDataReads
+    import AutoReads.instrumentDisplayReads
+    import AutoReads.instrumentExchangeReads
+    import AutoReads.orderDurationReads
+
+    val part1Reads = Json.reads[OrderTopicPartial1]
+    val part2reads = Json.reads[OrderTopicPartial2]
+    val part3reads = Json.reads[OrderTopicPartial3]
+    val part4reads = Json.reads[OrderTopicPartial4]
+
+    val reads = (part1Reads ~ part2reads ~ part3reads ~ part4reads).tupled.map {
+      case (
+        OrderTopicPartial1(accountKey, clientKey, clientId, clientName, ownerId, accountId, currentPriceLastTraded, marketValue, bid, ask,
+        filledAmount, tradeIdeaId, algoStrategyName, correlationKey, correlationTypes, switchInstrumentUic, cashAmount, multiLegOrderDetails)
+        ,
+        OrderTopicPartial2(greeks, openInterest, tradingStatus, shortTrading, tradeAllocationKey, allocationKeyId, ipoFinancingAmountPct, orderId,
+        relatedOpenOrders, externalReference, triggerParentOrderId, ipoSubscriptionFee, optionsData, clientNote, currentPrice, currentPriceType ,
+        currentPriceDelayMinutes, marketPrice)
+        ,
+        OrderTopicPartial3(nonTradableReason, displayAndFormat, exchange, uic, assetType, openOrderType, buySell, amount, toOpenClose, price,
+        expiryDate, valueDate, status, duration, orderTime)
+        ,
+        OrderTopicPartial4(amountAccountValueRatio, orderRelation, relatedPositionId, trailingStopStep, stopLimitPrice, copiedPositionId, orderAmountType, isMarketOpen, isForceOpen, marketState, breakoutTriggerUpPrice, breakoutTriggerDownPrice, triggerPriceType, trailingStopDistanceToMarket, calculationReliability, distanceToMarket)
+        ) =>
+        OrderTopic(accountKey, clientKey, clientId, clientName, ownerId, accountId, currentPriceLastTraded, marketValue, bid, ask, filledAmount,
+          tradeIdeaId, algoStrategyName, correlationKey, correlationTypes, switchInstrumentUic, cashAmount, multiLegOrderDetails,
+          greeks, openInterest, tradingStatus, shortTrading, tradeAllocationKey, allocationKeyId, ipoFinancingAmountPct, orderId, relatedOpenOrders,
+          externalReference, triggerParentOrderId, ipoSubscriptionFee, optionsData, clientNote, currentPrice, currentPriceType ,
+          currentPriceDelayMinutes, marketPrice, nonTradableReason, displayAndFormat, exchange, uic, assetType, openOrderType, buySell, amount,
+          toOpenClose, price, expiryDate, valueDate, status, duration, orderTime, amountAccountValueRatio, orderRelation, relatedPositionId,
+          trailingStopStep, stopLimitPrice, copiedPositionId, orderAmountType, isMarketOpen, isForceOpen, marketState, breakoutTriggerUpPrice,
+          breakoutTriggerDownPrice, triggerPriceType, trailingStopDistanceToMarket, calculationReliability, distanceToMarket)
+    }
+  }
 
 }
