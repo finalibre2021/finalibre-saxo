@@ -8,12 +8,14 @@ import io.circe.generic.extras.Configuration
 import io.circe.parser._
 import org.slf4j.LoggerFactory
 
+import scala.reflect.ClassTag
+
 case class StreamingSubscription[A <: StreamingTopic] private (
                                 referenceId : String,
                                 initialState : Json,
                                 firstObserver : StreamingObserver[A],
                                 connection : StreamingConnection
-                                ) {
+                                )(implicit ct : ClassTag[A]) {
   private val logger = LoggerFactory.getLogger(this.getClass)
   private var jsonState : Json = initialState
   private val listeners = scala.collection.mutable.HashMap.empty[Long, StreamingObserver[A]]
@@ -44,7 +46,7 @@ case class StreamingSubscription[A <: StreamingTopic] private (
     JsonTransformations.parseTopicSequence[A](jsonState) match {
       case Right(seq) => listeners.values.foreach(lis => lis.onSequenceUpdate(seq))
       case Left(_) => JsonTransformations.parseTopic[A](jsonState) match {
-        case Left (err) => logger.error(err)
+        case Left(err) => logger.error(err)
         case Right(value) => listeners.values.foreach(lis => lis.onUpdate(value))
       }
     }

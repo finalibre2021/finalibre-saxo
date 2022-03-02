@@ -6,6 +6,7 @@ import finalibre.saxo.rest.outgoing.streaming.topics._
 import io.circe.Encoder
 import io.circe.generic.semiauto.{deriveDecoder, deriveFor}
 
+import java.time.LocalDateTime
 import java.util.UUID
 
 object StreamingEndpoints {
@@ -144,8 +145,9 @@ object StreamingEndpoints {
       manualUrl.getOrElse(s"${SaxoConfig.Rest.Outgoing.openApiBaseUrl}/$group/v$version/$subGroup/subscriptions")
 
     import io.circe.generic.auto._, io.circe.syntax._
+    import Encoders.mapEncoder
 
-    def postBodyFor(contextId : String, request : S) : String = Map(
+    def postBodyFor(contextId : String, request : S) : String = Map[String,Any](
       "ContextId" -> contextId,
       "ReferenceId" -> referenceId,
       "Format" -> "application/json",
@@ -183,7 +185,31 @@ object StreamingEndpoints {
     implicit val priceListSubscriptionRequestEncoder = deriveEncoder[PriceListSubscriptionRequest]
     implicit val priceSubscriptionRequestEncoder = deriveEncoder[PriceSubscriptionRequest]
     implicit val sessionSubscriptionRequestEncoder = deriveEncoder[SessionSubscriptionRequest.type]
+
+
+    import io.circe.{Json => CirceJson, Encoder => CirceEncoder}
+    def capKey(str : String) = str.head.toUpper + str.drop(1)
+    def encodeAny(any : Any) : CirceJson = any match {
+      case null | None => CirceJson.Null
+      case Some(v) => encodeAny(v)
+      case i : Int => Encoder.encodeInt(i)
+      case l : Long => Encoder.encodeLong(l)
+      case d : Double => Encoder.encodeDouble(d)
+      case d : BigDecimal => Encoder.encodeBigDecimal(d)
+      case dt : LocalDateTime => Encoder.encodeLocalDateTime(dt)
+      case map : Map[String, Any] => CirceJson.obj(
+        (map.toList.sortBy(_._1).map {
+          case (k, v) => capKey(k) -> encodeAny(v)
+        }) : _ *
+      )
+      case oth => Encoder.encodeString(oth.toString)
+    }
+
+    implicit val mapEncoder : CirceEncoder[Map[String, Any]] = (map: Map[String, Any]) => encodeAny(map)
+
   }
+
+
 
 
 

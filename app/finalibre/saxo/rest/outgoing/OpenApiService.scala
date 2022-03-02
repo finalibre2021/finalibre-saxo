@@ -68,16 +68,12 @@ class OpenApiService @Inject()(
       useBasicAuthentication = true)(ResponseAuthorizationToken.reads)
 
   def apiDescription(area : String, callingContext : OpenApiCallingContext) : Future[CallResult[WSResponse]] = {
-    perform(resp => resp.get)(s"openapi.yaml", Some(callingContext), Nil, "https://gateway.saxobank.com/sim", true)(resp => resp)
+    perform(resp => resp.get())(s"openapi.yaml", Some(callingContext), Nil, "https://gateway.saxobank.com/sim", true)(resp => resp)
   }
 
   def registerSubscription[Topic <: StreamingTopic, Request <: SubscriptionRequest](endpoint : StreamingEndpoint[Topic, Request], request : Request)(implicit context : OpenApiCallingContext, actorSystem : ActorSystem, topicDecoder : Decoder[Topic]) : Future[CallResult[SubscriptionResponse[Topic]]] = {
     import io.circe.parser.decode
-    //import io.circe.generic.semiauto._
-    import io.circe.generic.auto._, io.circe.syntax._
-    /*implicit lazy val topicDecode : Decoder[Topic] = deriveDecoder[Topic]
-    implicit lazy val multiDecode : Decoder[MultiEntrySubscriptionResponse[Topic]] = deriveDecoder[MultiEntrySubscriptionResponse[Topic]]
-    implicit lazy val singleDecode : Decoder[SingleEntrySubscriptionResponse[Topic]] = deriveDecoder[SingleEntrySubscriptionResponse[Topic]]*/
+    import io.circe.generic.auto._
 
     val jsonString = endpoint.postBodyFor(context.token, request)
     val result = performWithCallResultFunction[SubscriptionResponse[Topic]](req => req.post(jsonString))(endpoint.subscriptionUrl,Some(context),Nil,openApiBaseUrl,false)(resp => {

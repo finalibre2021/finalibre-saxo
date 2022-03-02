@@ -24,6 +24,7 @@ import java.util.UUID
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.{Future, Promise}
+import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
 class StreamingConnection private[StreamingConnection](
@@ -129,7 +130,8 @@ class StreamingConnection private[StreamingConnection](
     }
   }
 
-  private[streaming] def createSubscriptionFor[T <: StreamingTopic, S <: SubscriptionRequest](endpoint : StreamingEndpoint[T,S], observer : StreamingObserver[T], initialState : Json): StreamingSubscription[T] = {
+  private[streaming] def createSubscriptionFor[T <: StreamingTopic, S <: SubscriptionRequest](endpoint : StreamingEndpoint[T,S], observer : StreamingObserver[T], initialState : Json)
+                                                                                             (implicit ctt : ClassTag[T], cta : ClassTag[S]) : StreamingSubscription[T] = {
     connections
       .values
       .flatMap(_.activeSubscriptions)
@@ -192,14 +194,16 @@ object StreamingConnection {
     }
   }
 
-  def createSubscriptionFor[T <: StreamingTopic, R <: SubscriptionRequest](endpoint : StreamingEndpoint[T,R], observer : StreamingObserver[T], request : R)(implicit context : OpenApiCallingContext, openApiService : OpenApiService, actorSystem : ActorSystem, decoder : Decoder[T], encoder : Encoder[T]) : Future[CallResult[StreamingSubscription[T]]] = {
+  def createSubscriptionFor[T <: StreamingTopic, R <: SubscriptionRequest](endpoint : StreamingEndpoint[T,R], observer : StreamingObserver[T], request : R)
+                                                                          (implicit context : OpenApiCallingContext, openApiService : OpenApiService,
+                                                                           actorSystem : ActorSystem, decoder : Decoder[T], encoder : Encoder[T],
+                                                                           ctt : ClassTag[T], ctr : ClassTag[R]) : Future[CallResult[StreamingSubscription[T]]] = {
     val connection = getConnection(context.token)
     implicit val execContext = actorSystem.dispatcher
     openApiService.registerSubscription(endpoint, request).map {
       case Left(e) => Left(e)
       case Right(res) => {
         import io.circe.syntax._
-        //import io.circe.generic.auto._
         if(res.isInstanceOf[MultiEntrySubscriptionResponse[_]]) {
           val cast =  res.asInstanceOf[MultiEntrySubscriptionResponse[T]]
           val subscription = connection.createSubscriptionFor(endpoint, observer, cast.snapshot.asJson)
