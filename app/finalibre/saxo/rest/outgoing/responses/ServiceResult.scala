@@ -1,5 +1,8 @@
 package finalibre.saxo.rest.outgoing.responses
 
+import finalibre.saxo.rest.outgoing.streaming.StreamingSubscription
+import finalibre.saxo.rest.outgoing.streaming.topics.StreamingTopic
+
 import scala.reflect.ClassTag
 
 object ServiceResult {
@@ -24,6 +27,8 @@ object ServiceResult {
     import scala.reflect._
     override def errorString: String = s"Failed to convert following json string to: ${ct.runtimeClass} - json string: ${jsonString}"
   }
+
+  type SubscriptionResult[A <: StreamingTopic] = CallResult[StreamingSubscription[A]]
 
 
 }

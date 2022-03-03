@@ -2,12 +2,16 @@ package finalibre.saxo.rest.outgoing
 
 import akka.actor.ActorSystem
 import finalibre.saxo.configuration.SaxoConfig
+import finalibre.saxo.rest.outgoing.Enums.AssetType.AssetType
+import finalibre.saxo.rest.outgoing.Enums.ClosedPositionField.ClosedPositionField
+import finalibre.saxo.rest.outgoing.Enums.NetPositionField.NetPositionField
+import finalibre.saxo.rest.outgoing.Enums.PutCall.PutCall
 import finalibre.saxo.rest.outgoing.OpenApiService._
 import finalibre.saxo.rest.outgoing.responses.{ResponseAccount, ResponseAuthorizationToken, ResponseClient, ResponsePosition}
 import finalibre.saxo.rest.outgoing.streaming.StreamingEndpoints.{AutoTrading, StreamingEndpoint}
 import finalibre.saxo.rest.outgoing.streaming.requests.{ChartSubscriptionRequest, InvestmentSubscriptionRequest, SubscriptionRequest}
 import finalibre.saxo.rest.outgoing.streaming.{MultiEntrySubscriptionResponse, SingleEntrySubscriptionResponse, StreamingConnection, StreamingEndpoints, StreamingObserver, StreamingSubscription, SubscriptionResponse}
-import finalibre.saxo.rest.outgoing.streaming.topics.{InvestmentTopic, StreamingTopic}
+import finalibre.saxo.rest.outgoing.streaming.topics.{ExposureTopic, InvestmentTopic, StreamingTopic}
 import io.circe.Decoder
 import io.circe.generic.decoding.DerivedDecoder
 import org.slf4j.LoggerFactory
@@ -18,6 +22,7 @@ import play.api.mvc.Results.Redirect
 import play.api.mvc.{AnyContent, Request, Result}
 
 import java.net.URLEncoder
+import java.time.LocalDateTime
 import javax.inject._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
@@ -186,6 +191,9 @@ class OpenApiService @Inject()(
     import Horizon._
     import AssetType._
     import BalanceFieldSpec._
+
+
+
     def createAutoTradingInvestmentSubscription(observer : StreamingObserver[InvestmentTopic])(implicit context : OpenApiCallingContext, actorSystem : ActorSystem) = {
       implicit val decoder = circeDecoder[InvestmentTopic]
       implicit val encoder = circeEncoder[InvestmentTopic]
@@ -198,13 +206,13 @@ class OpenApiService @Inject()(
       StreamingConnection.createSubscriptionFor(StreamingEndpoints.AutoTrading.Investments.Suggestions, observer, InvestmentSubscriptionRequest)
     }
     def createChartSubscription(observer : StreamingObserver[ChartTopic], assetType : AssetType , count : Option[Int] = None, fieldGroups : Option[Seq[ChartFieldSpec]] = Some(List(ChartFieldSpec.Data)), horizon : Horizon, uic : Long)(implicit context : OpenApiCallingContext, actorSystem : ActorSystem) = {
+      implicit val displayAndFormatDecoder = circeDecoder[ChartDisplayAndFormat]
       implicit val chartInfoDecoder = circeDecoder[ChartInfo]
       implicit val chartDataEntryDecoder = circeDecoder[ChartDataEntry]
-      implicit val displayAndFormatDecoder = circeDecoder[ChartDisplayAndFormat]
       implicit val decoder = circeDecoder[ChartTopic]
+      implicit val displayAndFormatEncoder = circeEncoder[ChartDisplayAndFormat]
       implicit val chartInfoEncoder = circeEncoder[ChartInfo]
       implicit val chartDataEntryEncoder = circeEncoder[ChartDataEntry]
-      implicit val displayAndFormatEncoder = circeEncoder[ChartDisplayAndFormat]
       implicit val encoder = circeEncoder[ChartTopic]
       StreamingConnection.createSubscriptionFor(StreamingEndpoints.Chart.Charts.Charts, observer, ChartSubscriptionRequest(assetType.toString, count, fieldGroups.map(_.map(_.toString)), horizon.id, uic))
     }
@@ -236,11 +244,76 @@ class OpenApiService @Inject()(
       StreamingConnection.createSubscriptionFor(Portfolio.Balances.Balances, observer, BalanceSubscriptionRequest(accountGroupKey, accountKey, clientKey, balanceFieldSpec.map(_.map(_.toString))))
     }
 
+    def createPortfolioClosedPositionsSubscription(observer : StreamingObserver[ClosedPositionTopic], clientKey : String, accountGroupKey : Option[String] = None, accountKey : Option[String],
+                                                   closedPositionId : Option[String] = None, fieldGroups : Option[Seq[ClosedPositionField]] = Some(Seq(ClosedPositionField.ClosedPosition)))
+                                                  (implicit context : OpenApiCallingContext, actorSystem : ActorSystem) : Future[SubscriptionResult[ClosedPositionTopic]] = {
+
+      implicit val fxOptionBaseDataDecoder = circeDecoder[FxOptionsBaseData]
+      implicit val closedPositionTopicDecoder = circeDecoder[ClosedPositionTopic]
+      implicit val fxOptionBaseDataEncoder = circeEncoder[FxOptionsBaseData]
+      implicit val closedPositionTopicEncoder = circeEncoder[ClosedPositionTopic]
+      StreamingConnection.createSubscriptionFor(Portfolio.ClosedPositions.ClosedPositions, observer, ClosedPositionSubscriptionRequest(
+        accountGroupKey, accountKey, clientKey, closedPositionId,fieldGroups.map(_.map(_.toString))
+      ))
+    }
+
+    def createExposureSubscription(observer : StreamingObserver[ExposureTopic], clientKey : String, accountGroupKey : Option[String] = None, accountKey : Option[String] = None,
+                                   assetType : Option[AssetType] = None, expiryDate : Option[LocalDateTime] = None, lowerBarrier : Option[Double] = None, putCall : Option[PutCall] = None,
+                                   strike : Option[Double] = None, uic : Option[Long] = None, upperBarrier : Option[Double] = None, valueDate : Option[LocalDateTime] = None)
+                                  (implicit context : OpenApiCallingContext, actorSystem : ActorSystem) : Future[SubscriptionResult[ExposureTopic]] = {
+      implicit val displayAndFormatDecoder = circeDecoder[InstrumentDisplayAndFormat]
+      implicit val exposureTopicDecoder = circeDecoder[ExposureTopic]
+      implicit val displayAndFormatEncoder = circeEncoder[InstrumentDisplayAndFormat]
+      implicit val exposureTopicEncoder = circeEncoder[ExposureTopic]
+      StreamingConnection.createSubscriptionFor(Portfolio.Exposure.Instruments, observer, InstrumentExposureSubscriptionRequest(
+        accountGroupKey, accountKey, assetType.map(_.toString), clientKey, expiryDate, lowerBarrier, putCall.map(_.toString()),
+        strike, upperBarrier, valueDate
+      ))
+    }
+
+    def createNetPositionSubscription(observer : StreamingObserver[NetPositionTopic], clientKey : String, accountGroupKey : Option[String] = None, accountKey : Option[String] = None,
+                                   assetType : Option[AssetType] = None, expiryDate : Option[LocalDateTime] = None, fieldGroups : Option[Seq[NetPositionField]] = None, lowerBarrier : Option[Double] = None,
+                                      netPositionId : Option[String] = None, putCall : Option[PutCall] = None, strike : Option[Double] = None, uic : Option[Long] = None, upperBarrier : Option[Double] = None,
+                                      valueDate : Option[LocalDateTime] = None, watchlistId : Option[String] = None)
+                                  (implicit context : OpenApiCallingContext, actorSystem : ActorSystem) : Future[SubscriptionResult[NetPositionTopic]] = {
+      implicit val instrumentDisplayAndFormatDecoder = circeDecoder[InstrumentDisplayAndFormat]
+      implicit val orderDurationDecoder = circeDecoder[OrderDuration]
+      implicit val relatedOrderInfoDecoder = circeDecoder[RelatedOrderInfo]
+      implicit val subPositionViewDecoder = circeDecoder[SubPositionView]
+      implicit val optionsDataDecoder = circeDecoder[OptionsData]
+      implicit val fixedIncomeDataDecoder = circeDecoder[FixedIncomeData]
+      implicit val subPositionBaseDecoder = circeDecoder[SubPositionBase]
+      implicit val subPositionResponseDecoder = circeDecoder[SubPositionResponse]
+      implicit val settlementInstructionsDecoder = circeDecoder[SettlementInstructions]
+      implicit val netPositionDynamicDecoder = circeDecoder[NetPositionDynamic]
+      implicit val netPositionBaseDecoder = circeDecoder[NetPositionStatic]
+      implicit val greeksDecoder = circeDecoder[GreeksDetails]
+      implicit val exchangeDecoder = circeDecoder[InstrumentExchangeDetails]
+      implicit val netPositionTopicDecoder = circeDecoder[NetPositionTopic]
+
+      implicit val instrumentDisplayAndFormatEncoder = circeEncoder[InstrumentDisplayAndFormat]
+      implicit val orderDurationEncoder = circeEncoder[OrderDuration]
+      implicit val relatedOrderInfoEncoder = circeEncoder[RelatedOrderInfo]
+      implicit val subPositionViewEncoder = circeEncoder[SubPositionView]
+      implicit val optionsDataEncoder = circeEncoder[OptionsData]
+      implicit val fixedIncomeDataEncoder = circeEncoder[FixedIncomeData]
+      implicit val subPositionBaseEncoder = circeEncoder[SubPositionBase]
+      implicit val settlementInstructionsEncoder = circeEncoder[SettlementInstructions]
+      implicit val subPositionResponseEncoder = circeEncoder[SubPositionResponse]
+      implicit val netPositionDynamicEncoder = circeEncoder[NetPositionDynamic]
+      implicit val netPositionBaseEncoder = circeEncoder[NetPositionStatic]
+      implicit val greeksEncoder = circeEncoder[GreeksDetails]
+      implicit val exchangeEncoder = circeEncoder[InstrumentExchangeDetails]
+      implicit val netPositionTopicEncoder = circeEncoder[NetPositionTopic]
+      StreamingConnection.createSubscriptionFor(Portfolio.NetPositions.NetPositions, observer, NetPositionSubscriptionRequest(
+        accountGroupKey, accountKey, assetType.map(_.toString), clientKey, expiryDate, fieldGroups.map(_.map(_.toString)), lowerBarrier,
+        netPositionId, putCall.map(_.toString()), strike, uic, upperBarrier, valueDate, watchlistId
+      ))
+    }
+
+
 
   }
-
-
-
 }
 
 object OpenApiService {

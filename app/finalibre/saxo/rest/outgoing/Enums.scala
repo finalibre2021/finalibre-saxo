@@ -126,8 +126,52 @@ object Enums {
     def fromString(str : String) = allValues.find(_.idStr == str)
   }
 
+  object ClosedPositionField extends Enumeration {
+    type ClosedPositionField = Val
+    case class ClosedPositionFieldValue(idStr : String, description : String) extends Val {
+      override def toString = idStr
+    }
 
-  /*
-   */
+    val ClosedPosition =  ClosedPositionFieldValue("ClosedPosition","Closed position data which is calculated differently whether viewed at client or account level")
+    val DisplayAndFormat =  ClosedPositionFieldValue("DisplayAndFormat", "Information about the instrument of the net position and how to display it.")
+    val ExchangeInfo =  ClosedPositionFieldValue("ExchangeInfo","Adds information about the instrument's exchange. This includes Exchange name, exchange code and open status. ")
+
+    val allValues = List(ClosedPosition, DisplayAndFormat, ExchangeInfo)
+    def fromString(str : String) = allValues.find(_.idStr == str)
+  }
+
+  object PutCall extends Enumeration {
+    type PutCall = Val
+    case class PutCallFieldValue(idStr : String, description : String) extends Val {
+      override def toString = idStr
+    }
+
+    val Call =  PutCallFieldValue("Call","Call")
+    val None =  PutCallFieldValue("None", "Not specified")
+    val Put =  PutCallFieldValue("Put","Put")
+
+    val allValues = List(Call, None, Put)
+    def fromString(str : String) = allValues.find(_.idStr == str)
+  }
+
+  object NetPositionField extends Enumeration {
+    type NetPositionField = Val
+    case class NetPositionFieldValue(idStr : String, description : String) extends Val {
+      override def toString = idStr
+    }
+
+    val DisplayAndFormat =  NetPositionFieldValue("DisplayAndFormat","Information about the instrument of the net position and how to display it.")
+    val ExchangeInfo =  NetPositionFieldValue("ExchangeInfo", "Adds information about the instrument's exchange. This includes Exchange name, exchange code and open status.")
+    val Greeks =  NetPositionFieldValue("Greeks","Greeks for Option(s), only applicable to Fx Options , Contract Options and Contract options CFD")
+    val NetPositionBase =  NetPositionFieldValue("NetPositionBase","NetPosition data which does not change whether viewed at client or account level")
+    val NetPositionView =  NetPositionFieldValue("NetPositionView","NetPosition, data which is calculated differently whether viewed at client or account level")
+    val SinglePosition =  NetPositionFieldValue("SinglePosition","If the NetPosition consists of a single position, include the positionid. This list will be empty if the NetPosition is comprised of more than one positions.")
+    val SinglePositionBase =  NetPositionFieldValue("SinglePositionBase","If the NetPosition consists of a single position, include data which does not change whether viewed at client or account level.")
+    val SinglePositionView =  NetPositionFieldValue("SinglePositionView","If the NetPosition consists of a single position, include data which is calculated differently whether viewed at client or account level, or changes with the market.")
+
+    val allValues = List(DisplayAndFormat, ExchangeInfo, Greeks, NetPositionBase, NetPositionView, SinglePosition, SinglePositionBase, SinglePositionView)
+    def fromString(str : String) = allValues.find(_.idStr == str)
+  }
+
 
 }
